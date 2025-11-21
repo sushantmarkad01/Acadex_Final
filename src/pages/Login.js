@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import "./Login.css";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth"; // ✅ Added onAuthStateChanged
 import { auth, provider, signInWithPopup } from "../firebase";
-import AnimatedPage from "../components/AnimatedPage";
-import { motion } from "framer-motion";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -17,7 +15,7 @@ export default function Login() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         // 'replace: true' creates the "No Back Button" effect
-        navigate("/dashboard", { replace: true });
+        navigate("/dashboard", { replace: true }); 
       }
       setCheckingAuth(false);
     });
@@ -40,9 +38,9 @@ export default function Login() {
     } catch (error) {
       let errorMessage = "❌ Invalid email or password.";
       if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
-        errorMessage = "❌ Invalid credentials. Please try again.";
+         errorMessage = "❌ Invalid credentials. Please try again.";
       } else if (error.code === "auth/too-many-requests") {
-        errorMessage = "❌ Too many failed attempts. Try again later.";
+         errorMessage = "❌ Too many failed attempts. Try again later.";
       }
       setError(errorMessage);
     }
@@ -60,105 +58,79 @@ export default function Login() {
   };
 
   // Prevent showing the login form for a split second if already logged in
-  if (checkingAuth) return null;
+  if (checkingAuth) return null; 
 
   return (
-    <AnimatedPage>
-      <div className="login-container">
-        <div className="login-header">
-          <motion.img
-            className="login-logo"
-            src="https://iili.io/KoAVeZg.md.png"
-            alt="App Logo"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+    <div className="login-container">
+      <div className="login-header">
+        <img
+          className="login-logo"
+          src="https://iili.io/KoAVeZg.md.png"
+          alt="App Logo"
+        />
+        <h1>
+          Sign in to <span className="highlight">AcadeX</span>
+        </h1>
+      </div>
+
+      <form className="login-form" onSubmit={handleSubmit}>
+        <div className="input-group">
+          <label>Email address</label>
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
           />
-          <motion.h1
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            Sign in to <span className="highlight">AcadeX</span>
-          </motion.h1>
         </div>
 
-        <motion.form
-          className="login-form"
-          onSubmit={handleSubmit}
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <div className="input-group">
-            <label>Email address</label>
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
-          </div>
+        <div className="input-group">
+          <label>Password</label>
+          <input
+            type="password"
+            placeholder="********"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required
+          />
+        </div>
 
-          <div className="input-group">
-            <label>Password</label>
-            <input
-              type="password"
-              placeholder="********"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-            />
-          </div>
+        {error && <p className="error-message">{error}</p>}
 
-          {error && <p className="error-message">{error}</p>}
+        <button type="submit" className="btn-primary">
+          Sign In
+        </button>
+        
+        <div className="separator">OR</div>
 
-          <motion.button
-            type="submit"
-            className="btn-primary"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+        {/* Google Sign-In Button */}
+        <button type="button" onClick={handleGoogleSignIn} className="btn-google">
+          <i className="fab fa-google"></i> Sign in with Google
+        </button>
+
+        {/* Link for New Institutes */}
+        <p style={{ marginTop: '20px', textAlign: 'center', fontSize: '14px' }}>
+          Want to use AcadeX for your institute?{" "}
+          <span
+            style={{ color: "#2563eb", cursor: "pointer", fontWeight: "600" }}
+            onClick={() => navigate("/apply")}
           >
-            Sign In
-          </motion.button>
+            Apply here
+          </span>
+        </p>
 
-          <div className="separator">OR</div>
-
-          {/* Google Sign-In Button */}
-          <motion.button
-            type="button"
-            onClick={handleGoogleSignIn}
-            className="btn-google"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+        {/* Link for Student Registration */}
+        <p style={{ marginTop: '10px', textAlign: 'center', fontSize: '14px' }}>
+          Are you a student?{" "}
+          <span
+            style={{ color: "#2563eb", cursor: "pointer", fontWeight: "600" }}
+            onClick={() => navigate("/student-register")}
           >
-            <i className="fab fa-google"></i> Sign in with Google
-          </motion.button>
-
-          {/* Link for New Institutes */}
-          <p style={{ marginTop: '20px', textAlign: 'center', fontSize: '14px' }}>
-            Want to use AcadeX for your institute?{" "}
-            <span
-              style={{ color: "#2563eb", cursor: "pointer", fontWeight: "600" }}
-              onClick={() => navigate("/apply")}
-            >
-              Apply here
-            </span>
-          </p>
-
-          {/* Link for Student Registration */}
-          <p style={{ marginTop: '10px', textAlign: 'center', fontSize: '14px' }}>
-            Are you a student?{" "}
-            <span
-              style={{ color: "#2563eb", cursor: "pointer", fontWeight: "600" }}
-              onClick={() => navigate("/student-register")}
-            >
-              Register with Institute Code
-            </span>
-          </p>
-        </motion.form>
-      </div>
-    </AnimatedPage>
+            Register with Institute Code
+          </span>
+        </p>
+      </form>
+    </div>
   );
 }

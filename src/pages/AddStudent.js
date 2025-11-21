@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { auth, sendPasswordResetEmail, db } from '../firebase';
+import { auth, db, sendPasswordResetEmail } from '../firebase'; // ✅ Import auth & email function
 import { collection, query, where, getDocs } from "firebase/firestore";
+import toast from 'react-hot-toast'; // ✅ Use Toast instead of showModal
 import './Dashboard.css';
 
 const BACKEND_URL = "https://acadex-backend-n2wh.onrender.com";
 
-export default function AddStudent({ instituteId, instituteName, showModal }) {
+export default function AddStudent({ instituteId, instituteName }) {
     const [form, setForm] = useState({ firstName: "", lastName: "", email: "", rollNo: "", department: "", password: "" });
     const [loading, setLoading] = useState(false);
     const [departments, setDepartments] = useState([]);
 
-    // Fetch Departments
     useEffect(() => {
         const fetchDepartments = async () => {
             if (!instituteId) return;
@@ -26,8 +26,10 @@ export default function AddStudent({ instituteId, instituteName, showModal }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        const toastId = toast.loading("Creating Student...");
 
         try {
+            // 1. Create User in Backend (Database)
             const response = await fetch(`${BACKEND_URL}/createUser`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -39,13 +41,21 @@ export default function AddStudent({ instituteId, instituteName, showModal }) {
                 })
             });
 
-            if (!response.ok) throw new Error("Failed to create student");
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || "Failed to create student");
+            }
 
+            // 2. ✅ Send Firebase Built-in Reset Email from Frontend
             await sendPasswordResetEmail(auth, form.email);
-            showModal('Success', 'Student added successfully!');
+
+            // 3. Show Success
+            toast.success('Student added! Reset email sent.', { id: toastId });
             setForm({ firstName: "", lastName: "", email: "", rollNo: "", department: "", password: "" });
+
         } catch (err) {
-            showModal('Error', err.message, 'danger');
+            console.error(err);
+            toast.error("Error: " + err.message, { id: toastId });
         } finally {
             setLoading(false);
         }
@@ -59,7 +69,6 @@ export default function AddStudent({ instituteId, instituteName, showModal }) {
                     <div className="input-group"><label>First Name</label><input type="text" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} required /></div>
                     <div className="input-group"><label>Last Name</label><input type="text" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} required /></div>
                     
-                    {/* ✅ ADDED DEPARTMENT DROPDOWN */}
                     <div className="input-group">
                         <label>Department</label>
                         <select value={form.department} onChange={e => setForm({...form, department: e.target.value})} required>
@@ -72,7 +81,7 @@ export default function AddStudent({ instituteId, instituteName, showModal }) {
 
                     <div className="input-group"><label>Roll No</label><input type="text" value={form.rollNo} onChange={e => setForm({...form, rollNo: e.target.value})} required /></div>
                     <div className="input-group"><label>Email</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required /></div>
-                    <div className="input-group"><label>Temp Password</label><input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required /></div>
+                    <div className="input-group"><label>Password</label><input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required /></div>
                     <button className="btn-primary" disabled={loading}>{loading ? 'Adding...' : 'Add Student'}</button>
                 </form>
             </div>

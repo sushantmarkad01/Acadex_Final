@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { auth, sendPasswordResetEmail, db } from '../firebase';
+import { db } from '../firebase';
 import { collection, query, where, getDocs } from "firebase/firestore";
+import toast from 'react-hot-toast'; 
 import './Dashboard.css';
 
 const BACKEND_URL = "https://acadex-backend-n2wh.onrender.com";
 
-export default function AddTeacher({ instituteId, instituteName, showModal }) {
+export default function AddTeacher({ instituteId, instituteName }) {
     const [form, setForm] = useState({ firstName: "", lastName: "", email: "", subject: "", department: "", password: "" });
     const [loading, setLoading] = useState(false);
     const [departments, setDepartments] = useState([]);
 
-    // Fetch Departments
     useEffect(() => {
         const fetchDepartments = async () => {
             if (!instituteId) return;
@@ -26,6 +26,7 @@ export default function AddTeacher({ instituteId, instituteName, showModal }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        const toastId = toast.loading("Adding Teacher...");
 
         try {
             const response = await fetch(`${BACKEND_URL}/createUser`, {
@@ -35,17 +36,23 @@ export default function AddTeacher({ instituteId, instituteName, showModal }) {
                     ...form, 
                     role: 'teacher', 
                     instituteId, 
-                    instituteName 
+                    instituteName,
+                    // ✅ Passing Subject explicitly
+                    subject: form.subject,
+                    department: form.department
                 })
             });
 
-            if (!response.ok) throw new Error("Failed to create teacher");
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || "Failed to create teacher");
+            }
 
-            await sendPasswordResetEmail(auth, form.email);
-            showModal('Success', 'Teacher added successfully!');
+            toast.success('Teacher Added Successfully!', { id: toastId });
             setForm({ firstName: "", lastName: "", email: "", subject: "", department: "", password: "" });
+
         } catch (err) {
-            showModal('Error', err.message, 'danger');
+            toast.error("Error: " + err.message, { id: toastId });
         } finally {
             setLoading(false);
         }
@@ -59,14 +66,11 @@ export default function AddTeacher({ instituteId, instituteName, showModal }) {
                     <div className="input-group"><label>First Name</label><input type="text" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} required /></div>
                     <div className="input-group"><label>Last Name</label><input type="text" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} required /></div>
                     
-                    {/* ✅ ADDED DEPARTMENT DROPDOWN */}
                     <div className="input-group">
                         <label>Department</label>
                         <select value={form.department} onChange={e => setForm({...form, department: e.target.value})} required>
                             <option value="">Select Department</option>
-                            {departments.map((dept, index) => (
-                                <option key={index} value={dept}>{dept}</option>
-                            ))}
+                            {departments.map((dept, index) => <option key={index} value={dept}>{dept}</option>)}
                         </select>
                     </div>
 

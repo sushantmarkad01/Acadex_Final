@@ -3,18 +3,15 @@ import { signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth, db, sendPasswordResetEmail } from '../firebase';
 import { collection, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import toast, { Toaster } from 'react-hot-toast'; // ✅ Import Toast
 import './Dashboard.css'; 
 
-// ✅ ADDED: Your Backend URL
 const BACKEND_URL = "https://acadex-backend-n2wh.onrender.com";
 
 export default function SuperAdminDashboard() {
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-    
-    const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'info', onConfirm: null });
-    
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -25,19 +22,15 @@ export default function SuperAdminDashboard() {
         return () => unsubscribe();
     }, []);
 
-    const confirmAction = (title, message, action, type = 'info') => {
-        setModal({ isOpen: true, title, message, onConfirm: action, type });
-    };
-    const closeModal = () => setModal({ ...modal, isOpen: false });
-
-    // ✅ FIXED: Now calls Backend to create the Auth Account
+    // ✅ FIXED: Approval Logic with Toast
     const handleApproval = async (app) => {
-        closeModal();
+        const toastId = toast.loading("Creating Admin Account...");
+        
         try {
             // 1. Generate a random temporary password
-            const tempPassword = Math.random().toString(36).slice(-8) + "Aa1@"; // Random string
+            const tempPassword = Math.random().toString(36).slice(-8) + "Aa1@"; 
             
-            // 2. Call the Backend to create the User in Firebase Auth + Firestore
+            // 2. Call Backend
             const response = await fetch(`${BACKEND_URL}/createUser`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -46,51 +39,54 @@ export default function SuperAdminDashboard() {
                     password: tempPassword,
                     firstName: app.contactName,
                     lastName: "(Admin)",
-                    role: 'institute-admin',
+                    role: 'institute-admin', // Matches backend role check
                     instituteName: app.instituteName,
-                    // We use the app ID as the temporary institute ID
-                    instituteId: app.id 
+                    instituteId: app.id // Use App ID as Institute ID
                 })
             });
 
             if (!response.ok) {
-                throw new Error("Failed to create admin account on backend.");
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Backend creation failed");
             }
 
             const data = await response.json();
             const newAdminUid = data.uid;
 
-            // 3. Update Application Status in Firestore
+            // 3. Update Firestore Status
             await updateDoc(doc(db, "applications", app.id), { 
                 status: 'approved', 
                 adminUid: newAdminUid 
             });
             
-            // 4. Send the "Reset Password" email so they can set their own password
+            // 4. Send Password Reset Email
             await sendPasswordResetEmail(auth, app.email);
             
-            alert(`✅ Approved! An email has been sent to ${app.email} to set their password.`);
+            toast.success(`Approved! Login email sent to ${app.email}`, { id: toastId });
 
         } catch (error) {
             console.error(error);
-            alert("Error approving: " + error.message);
+            toast.error("Approval Failed: " + error.message, { id: toastId });
         }
     };
 
     const handleDenial = async (appId) => {
-        closeModal();
+        if(!window.confirm("Are you sure you want to deny this request?")) return;
         try {
             await updateDoc(doc(db, "applications", appId), { status: 'denied' });
-        } catch(e) { console.error(e); }
+            toast.success("Application Denied");
+        } catch(e) { 
+            toast.error("Error denying application");
+        }
     };
 
     const handleSendLoginLink = async (email) => {
-        closeModal();
+        const toastId = toast.loading("Sending email...");
         try { 
             await sendPasswordResetEmail(auth, email); 
-            alert(`Login link sent to ${email}`); 
+            toast.success(`Login link sent to ${email}`, { id: toastId });
         } catch (e) { 
-            alert(e.message); 
+            toast.error("Failed to send email", { id: toastId });
         }
     };
 
@@ -98,24 +94,9 @@ export default function SuperAdminDashboard() {
 
     return (
         <div className="dashboard-container">
-            {/* ✅ MODAL OVERLAY */}
-            {modal.isOpen && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-box">
-                        <div className={`modal-icon ${modal.type === 'danger' ? 'icon-danger' : 'icon-info'}`}>
-                            <i className={`fas ${modal.type === 'danger' ? 'fa-exclamation-triangle' : 'fa-info-circle'}`}></i>
-                        </div>
-                        <h3>{modal.title}</h3>
-                        <p>{modal.message}</p>
-                        <div className="modal-actions">
-                            <button className="btn-secondary" onClick={closeModal}>Cancel</button>
-                            <button className={`btn-primary ${modal.type === 'danger' ? 'btn-danger-solid' : ''}`} onClick={modal.onConfirm}>Confirm</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* ✅ Toast Container */}
+            <Toaster position="top-center" reverseOrder={false} />
 
-            {/* ✅ MOBILE NAV OVERLAY */}
             {isMobileNavOpen && <div className="nav-overlay" onClick={() => setIsMobileNavOpen(false)}></div>}
 
             <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`}>
@@ -191,13 +172,13 @@ export default function SuperAdminDashboard() {
                                                     {app.status === 'pending' && (
                                                         <>
                                                             <button 
-                                                                onClick={() => confirmAction('Approve Institute?', `Approve ${app.instituteName} and email admin?`, () => handleApproval(app))} 
+                                                                onClick={() => handleApproval(app)} 
                                                                 className="btn-action btn-action-approve"
                                                             >
                                                                 Approve
                                                             </button>
                                                             <button 
-                                                                onClick={() => confirmAction('Deny Request?', `Deny ${app.instituteName}?`, () => handleDenial(app.id), 'danger')} 
+                                                                onClick={() => handleDenial(app.id)} 
                                                                 className="btn-action btn-action-deny"
                                                             >
                                                                 Deny
@@ -206,7 +187,7 @@ export default function SuperAdminDashboard() {
                                                     )}
                                                     {app.status === 'approved' && (
                                                         <button 
-                                                            onClick={() => confirmAction('Resend Link?', `Send login link to ${app.email}?`, () => handleSendLoginLink(app.email))} 
+                                                            onClick={() => handleSendLoginLink(app.email)} 
                                                             className="btn-action btn-action-link"
                                                         >
                                                             Resend Link

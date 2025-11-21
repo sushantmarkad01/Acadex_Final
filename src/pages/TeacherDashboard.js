@@ -5,6 +5,7 @@ import { auth, db } from '../firebase';
 import { collection, doc, setDoc, serverTimestamp, onSnapshot, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { QRCodeSVG } from 'qrcode.react';
 import { CSVLink } from 'react-csv';
+import toast, { Toaster } from 'react-hot-toast'; // ✅ 1. Import React Hot Toast
 import './Dashboard.css'; 
 import AddTasks from './AddTasks';
 import Profile from './Profile';
@@ -54,7 +55,7 @@ const DashboardHome = ({ teacherInfo, activeSession, attendanceList, sessionErro
             </div>
             
             <div className="cards-grid">
-                {/* 2. Session Control Card - FIXED SPACING */}
+                {/* 2. Session Control Card */}
                 <div className="card" style={{ 
                     background: activeSession 
                         ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)' 
@@ -84,7 +85,7 @@ const DashboardHome = ({ teacherInfo, activeSession, attendanceList, sessionErro
                         </p>
                     </div>
 
-                    {/* Styled Button (Now uses btn-modern-danger correctly) */}
+                    {/* Styled Button */}
                     <button 
                         onClick={onSessionToggle} 
                         className={activeSession ? "btn-modern-danger" : "btn-modern-primary"} 
@@ -94,10 +95,11 @@ const DashboardHome = ({ teacherInfo, activeSession, attendanceList, sessionErro
                         {activeSession ? 'End Session' : 'Start New Session'}
                     </button>
                     
+                    {/* Replaced text error with Toast, but kept this just in case you want legacy display */}
                     {sessionError && <p className="error-message" style={{marginTop:'10px'}}>{sessionError}</p>}
                 </div>
 
-                {/* 3. Stats Card - CLEANER LAYOUT */}
+                {/* 3. Stats Card */}
                 <div className="card">
                     <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'20px'}}>
                         <div className="icon-box-modern" style={{background:'#fff7ed', color:'#ea580c'}}>
@@ -123,7 +125,7 @@ const DashboardHome = ({ teacherInfo, activeSession, attendanceList, sessionErro
                 </div>
             </div>
 
-            {/* 4. QR Code Section - FIXED CENTERING */}
+            {/* 4. QR Code Section */}
             {activeSession && (
                 <div className="card card-full-width" style={{marginTop: '24px', textAlign:'center', border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.06)'}}>
                     <div style={{marginBottom: '24px'}}>
@@ -204,7 +206,13 @@ export default function TeacherDashboard() {
   const [sessionError, setSessionError] = useState('');
   const navigate = useNavigate();
 
-  // 1. Fetch Teacher Profile
+  // 1. ✅ NEW: Sound Effect Function (Using your exact link)
+  const playSessionStartSound = () => {
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3');
+    audio.play().catch(error => console.log("Audio play failed:", error));
+  };
+
+  // 2. Fetch Teacher Profile
   useEffect(() => {
     if (!auth.currentUser) return;
     const userDocRef = doc(db, "users", auth.currentUser.uid);
@@ -212,7 +220,7 @@ export default function TeacherDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Fetch Active Session
+  // 3. Fetch Active Session
   useEffect(() => {
     if (!auth.currentUser) return;
     const q = query(collection(db, 'live_sessions'), where('teacherId', '==', auth.currentUser.uid), where('isActive', '==', true));
@@ -220,7 +228,7 @@ export default function TeacherDashboard() {
     return () => unsubscribe();
   }, [teacherInfo]);
 
-  // 3. Fetch Attendance List
+  // 4. Fetch Attendance List
   useEffect(() => {
     if (activeSession) {
         const q = query(collection(db, 'attendance'), where('sessionId', '==', activeSession.sessionId));
@@ -229,23 +237,52 @@ export default function TeacherDashboard() {
     } else setAttendanceList([]);
   }, [activeSession]);
 
-  // 4. Handle Session Toggle
+  // 5. ✅ MODIFIED: Handle Session Toggle
   const handleSession = async () => {
     if (activeSession) {
+        // End Session
         await setDoc(doc(db, 'live_sessions', activeSession.sessionId), { isActive: false }, { merge: true });
+        toast.success("Session Ended"); 
     } else {
-        if (!teacherInfo?.instituteId) return setSessionError("Institute ID missing.");
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const q = query(collection(db, "live_sessions"), where("isActive", "==", true), where("instituteId", "==", teacherInfo.instituteId));
-            const existing = await getDocs(q);
-            const batch = writeBatch(db);
-            existing.forEach(d => batch.update(d.ref, { isActive: false }));
-            await batch.commit();
-            const newRef = doc(collection(db, 'live_sessions'));
-            await setDoc(newRef, {
-                sessionId: newRef.id, teacherId: auth.currentUser.uid, teacherName: teacherInfo.firstName, subject: teacherInfo.subject, createdAt: serverTimestamp(), isActive: true, location: { latitude: pos.coords.latitude, longitude: pos.coords.longitude }, instituteId: teacherInfo.instituteId
+        // Start Session
+        if (!teacherInfo?.instituteId) {
+             setSessionError("Institute ID missing.");
+             toast.error("Institute ID missing.");
+             return;
+        }
+
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const q = query(collection(db, "live_sessions"), where("isActive", "==", true), where("instituteId", "==", teacherInfo.instituteId));
+                const existing = await getDocs(q);
+                const batch = writeBatch(db);
+                existing.forEach(d => batch.update(d.ref, { isActive: false }));
+                await batch.commit();
+                
+                const newRef = doc(collection(db, 'live_sessions'));
+                await setDoc(newRef, {
+                    sessionId: newRef.id, 
+                    teacherId: auth.currentUser.uid, 
+                    teacherName: teacherInfo.firstName, 
+                    subject: teacherInfo.subject, 
+                    createdAt: serverTimestamp(), 
+                    isActive: true, 
+                    location: { latitude: pos.coords.latitude, longitude: pos.coords.longitude }, 
+                    instituteId: teacherInfo.instituteId
+                });
+                
+                // ✅ Success: Play sound + Toast
+                playSessionStartSound();
+                toast.success("Session Started Successfully!", { duration: 3000 });
+
+            }, (err) => {
+                // ✅ Error: Show Toast for 3 seconds instead of Alert
+                toast.error("Location required to start session.", { duration: 3000 });
+                setSessionError('Location required.');
             });
-        }, (err) => setSessionError('Location required.'));
+        } else {
+            toast.error("Geolocation is not supported by this browser.");
+        }
     }
   };
 
@@ -281,6 +318,9 @@ export default function TeacherDashboard() {
   
   return (
     <div className="dashboard-container">
+      {/* ✅ Toast Container Added Here */}
+      <Toaster position="top-center" reverseOrder={false} />
+
       {isMobileNavOpen && <div className="nav-overlay" onClick={() => setIsMobileNavOpen(false)}></div>}
       <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`}>
         <div className="logo-container">
@@ -292,7 +332,6 @@ export default function TeacherDashboard() {
             <div className="teacher-info" onClick={() => { setActivePage('profile'); setIsMobileNavOpen(false); }} style={{cursor:'pointer'}}>
                 <h4>{teacherInfo.firstName} {teacherInfo.lastName}</h4>
                 <p>{teacherInfo.subject}</p>
-                {/* ✅ NEW: Modern Pill Button */}
                 <div className="edit-profile-pill">
                     <i className="fas fa-pen" style={{fontSize:'10px'}}></i>
                     <span>Edit Profile</span>

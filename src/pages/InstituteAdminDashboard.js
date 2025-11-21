@@ -3,6 +3,7 @@ import { signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import toast, { Toaster } from 'react-hot-toast'; // ✅ Keep Toast for messages
 import './Dashboard.css';
 
 // Import components
@@ -12,7 +13,7 @@ import AddHOD from './AddHOD';
 import AddDepartment from './AddDepartment';
 import ManageInstituteUsers from './ManageInstituteUsers';
 
-const DashboardHome = ({ instituteName, instituteId, showModal }) => {
+const DashboardHome = ({ instituteName, instituteId }) => {
     const [code, setCode] = useState(null);
     const [loading, setLoading] = useState(false);
 
@@ -41,9 +42,9 @@ const DashboardHome = ({ instituteName, instituteId, showModal }) => {
                 code: newCode, instituteName, instituteId
             }, { merge: true });
             setCode(newCode);
-            showModal('Success', `New Institute Code Generated: ${newCode}`);
+            toast.success(`New Code Generated: ${newCode}`);
         } catch (err) {
-            showModal('Error', 'Failed to generate code.', 'danger');
+            toast.error("Failed to generate code.");
         } finally {
             setLoading(false);
         }
@@ -85,6 +86,7 @@ export default function InstituteAdminDashboard() {
     const [activePage, setActivePage] = useState('dashboard');
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     
+    // ✅ RESTORED: Modal State for Confirmations
     const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'info', onConfirm: null });
 
     const navigate = useNavigate();
@@ -101,9 +103,11 @@ export default function InstituteAdminDashboard() {
 
     const handleLogout = async () => { await signOut(auth); navigate('/'); };
     
+    // ✅ RESTORED: Helper to show modal (ManageInstituteUsers needs this!)
     const showModal = (title, message, type = 'info', onConfirm = null) => {
         setModal({ isOpen: true, title, message, type, onConfirm });
     };
+    
     const closeModal = () => setModal({ ...modal, isOpen: false });
 
     const NavLink = ({ page, iconClass, label }) => (
@@ -117,20 +121,25 @@ export default function InstituteAdminDashboard() {
         const { instituteName, instituteId } = adminInfo;
 
         switch (activePage) {
-            case 'dashboard': return <DashboardHome instituteName={instituteName} instituteId={instituteId} showModal={showModal} />;
-            // ✅ Pass showModal to ALL sub-components
-            case 'addDepartment': return <AddDepartment instituteId={instituteId} instituteName={instituteName} showModal={showModal} />;
-            case 'addHOD': return <AddHOD instituteId={instituteId} instituteName={instituteName} showModal={showModal} />;
-            case 'addTeacher': return <AddTeacher instituteId={instituteId} instituteName={instituteName} showModal={showModal} />;
-            case 'addStudent': return <AddStudent instituteId={instituteId} instituteName={instituteName} showModal={showModal} />;
+            case 'dashboard': return <DashboardHome instituteName={instituteName} instituteId={instituteId} />;
+            case 'addDepartment': return <AddDepartment instituteId={instituteId} instituteName={instituteName} />;
+            case 'addHOD': return <AddHOD instituteId={instituteId} instituteName={instituteName} />;
+            case 'addTeacher': return <AddTeacher instituteId={instituteId} instituteName={instituteName} />;
+            case 'addStudent': return <AddStudent instituteId={instituteId} instituteName={instituteName} />;
+            
+            // ✅ FIXED: Passing showModal here so Deleting works!
             case 'manageUsers': return <ManageInstituteUsers instituteId={instituteId} showModal={showModal} />;
-            default: return <DashboardHome instituteName={instituteName} instituteId={instituteId} showModal={showModal} />;
+            
+            default: return <DashboardHome instituteName={instituteName} instituteId={instituteId} />;
         }
     };
 
     return (
         <div className="dashboard-container">
-            {/* CUSTOM MODAL */}
+            {/* ✅ Toaster for Success Messages */}
+            <Toaster position="top-right" reverseOrder={false} />
+
+            {/* ✅ Modal Overlay for Confirmations */}
             {modal.isOpen && (
                 <div className="custom-modal-overlay">
                     <div className="custom-modal-box">
@@ -143,7 +152,7 @@ export default function InstituteAdminDashboard() {
                             {modal.onConfirm ? (
                                 <>
                                     <button className="btn-secondary" onClick={closeModal}>Cancel</button>
-                                    <button className="btn-primary btn-danger-solid" onClick={() => { modal.onConfirm(); closeModal(); }}>Confirm</button>
+                                    <button className={`btn-primary ${modal.type === 'danger' ? 'btn-danger-solid' : ''}`} onClick={() => { modal.onConfirm(); closeModal(); }}>Confirm</button>
                                 </>
                             ) : (
                                 <button className="btn-primary" onClick={closeModal}>Okay</button>

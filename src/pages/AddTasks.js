@@ -1,56 +1,89 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { auth, db } from '../firebase';
-import './Dashboard.css'; 
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import toast from 'react-hot-toast';
+import './Dashboard.css';
 
 export default function AddTasks() {
-    const [task, setTask] = useState({ title: '', description: '', link: '' });
-    const [myTasks, setMyTasks] = useState([]);
-    const [teacherInfo, setTeacherInfo] = useState(null);
-    const [success, setSuccess] = useState('');
-
-    useEffect(() => {
-        if (auth.currentUser) getDoc(doc(db, "users", auth.currentUser.uid)).then(doc => setTeacherInfo(doc.exists() ? doc.data() : null));
-    }, []);
-
-    useEffect(() => {
-        if (auth.currentUser) {
-            const q = query(collection(db, 'tasks'), where('teacherId', '==', auth.currentUser.uid));
-            return onSnapshot(q, (snapshot) => setMyTasks(snapshot.docs.map(d => ({ id: d.id, ...d.data() }))));
-        }
-    }, []);
+    const [task, setTask] = useState({ title: '', description: '', deadline: '', assignTo: 'All Students' });
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!auth.currentUser) return;
+        setLoading(true);
+        const toastId = toast.loading("Assigning Task...");
+
         try {
             await addDoc(collection(db, 'tasks'), {
-                ...task, teacherId: auth.currentUser.uid, teacherName: `${teacherInfo.firstName}`, instituteId: teacherInfo.instituteId, department: teacherInfo.department, createdAt: serverTimestamp(),
+                ...task,
+                teacherId: auth.currentUser.uid,
+                createdAt: serverTimestamp(),
+                status: 'active'
             });
-            setSuccess('Task Assigned!'); setTask({ title: '', description: '', link: '' }); setTimeout(() => setSuccess(''), 3000);
-        } catch (err) { alert('Failed'); }
+            toast.success("Task Assigned Successfully!", { id: toastId });
+            setTask({ title: '', description: '', deadline: '', assignTo: 'All Students' });
+        } catch (error) {
+            toast.error("Error: " + error.message, { id: toastId });
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <div className="content-section">
             <h2 className="content-title">Assign Task</h2>
-            <div className="card">
+            <p className="content-subtitle">Create new assignments for your class.</p>
+
+            <div className="card" style={{ maxWidth: '600px' }}>
                 <form onSubmit={handleSubmit}>
-                    <div className="input-group"><label>Title</label><input type="text" value={task.title} onChange={(e) => setTask({...task, title: e.target.value})} /></div>
-                    <div className="input-group"><label>Description</label><input type="text" value={task.description} onChange={(e) => setTask({...task, description: e.target.value})} /></div>
-                    <div className="input-group"><label>Link</label><input type="url" value={task.link} onChange={(e) => setTask({...task, link: e.target.value})} /></div>
-                    {success && <p style={{color:'green'}}>{success}</p>}
-                    <button type="submit" className="btn-primary">Assign</button>
-                </form>
-            </div>
-            <h3 style={{marginTop:'30px'}}>Active Tasks</h3>
-            <div className="cards-grid">
-                {myTasks.map(t => (
-                    <div key={t.id} className="card">
-                        <h4>{t.title}</h4>
-                        <p>{t.description}</p>
-                        <button onClick={() => deleteDoc(doc(db, "tasks", t.id))} className="btn-delete" style={{marginTop:'10px'}}>Delete</button>
+                    <div className="input-group">
+                        <label>Task Title</label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Data Structures Assignment 1" 
+                            required 
+                            value={task.title} 
+                            onChange={e => setTask({...task, title: e.target.value})} 
+                        />
                     </div>
-                ))}
+
+                    <div className="input-group">
+                        <label>Description</label>
+                        <textarea 
+                            rows="4" 
+                            placeholder="Enter task details..." 
+                            required 
+                            value={task.description} 
+                            onChange={e => setTask({...task, description: e.target.value})} 
+                        />
+                    </div>
+
+                    <div className="input-group">
+                        <label>Deadline</label>
+                        <input 
+                            type="datetime-local" 
+                            required 
+                            value={task.deadline} 
+                            onChange={e => setTask({...task, deadline: e.target.value})} 
+                        />
+                    </div>
+
+                    <div className="input-group">
+                        <label>Assign To</label>
+                        <select 
+                            value={task.assignTo} 
+                            onChange={e => setTask({...task, assignTo: e.target.value})}
+                        >
+                            <option>All Students</option>
+                            <option>Specific Roll Numbers (Coming Soon)</option>
+                        </select>
+                    </div>
+
+                    <button className="btn-primary" disabled={loading}>
+                        {loading ? 'Assigning...' : 'Assign Task'}
+                    </button>
+                </form>
             </div>
         </div>
     );

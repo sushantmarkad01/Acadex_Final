@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
+import { Toaster } from 'react-hot-toast'; // ✅ Import Toaster
 
 // Lazy load components
 const Login = lazy(() => import("./pages/Login"));
@@ -17,16 +18,16 @@ function App() {
   const location = useLocation();
   return (
     <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Loading...</div>}>
+      {/* ✅ Add Toaster here for global notifications */}
+      <Toaster position="top-center" reverseOrder={false} />
+      
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/apply" element={<InstituteApplication />} />
           <Route path="/check-status" element={<CheckStatus />} />
-
-          {/* ✅ NEW Route for Students */}
           <Route path="/student-register" element={<StudentRegister />} />
-
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/free-time" element={<FreeTime />} />
