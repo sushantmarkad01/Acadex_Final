@@ -7,9 +7,16 @@ import './Dashboard.css';
 const BACKEND_URL = "https://acadex-backend-n2wh.onrender.com";
 
 export default function AddStudent({ instituteId, instituteName }) {
-    const [form, setForm] = useState({ firstName: "", lastName: "", email: "", rollNo: "", department: "", password: "" });
+    const [form, setForm] = useState({ 
+        firstName: "", lastName: "", email: "", rollNo: "", 
+        department: "", collegeId: "", 
+        year: "", semester: "", // ✅ New Fields
+        password: "" 
+    });
+    
     const [loading, setLoading] = useState(false);
     const [departments, setDepartments] = useState([]);
+    const [availableSemesters, setAvailableSemesters] = useState([]);
 
     // 1. Fetch Departments
     useEffect(() => {
@@ -24,27 +31,35 @@ export default function AddStudent({ instituteId, instituteName }) {
         fetchDepartments();
     }, [instituteId]);
 
-    // 2. Handle Submit
+    // 2. Update Semesters based on Year
+    useEffect(() => {
+        if (form.year === 'FE') setAvailableSemesters(['1', '2']);
+        else if (form.year === 'SE') setAvailableSemesters(['3', '4']);
+        else if (form.year === 'TE') setAvailableSemesters(['5', '6']);
+        else if (form.year === 'BE') setAvailableSemesters(['7', '8']);
+        else setAvailableSemesters([]);
+        
+        setForm(prev => ({ ...prev, semester: '' }));
+    }, [form.year]);
+
+    // 3. Handle Submit
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        const toastId = toast.loading("Verifying Roll No...");
+        const toastId = toast.loading("Verifying Details...");
 
         try {
-            // ✅ STEP 1: Check for Duplicate Roll No
-            const q = query(
-                collection(db, "users"),
-                where("instituteId", "==", instituteId),
-                where("department", "==", form.department),
-                where("rollNo", "==", form.rollNo)
-            );
-            const snap = await getDocs(q);
+            const usersRef = collection(db, "users");
 
-            if (!snap.empty) {
-                throw new Error(`Roll No. ${form.rollNo} already exists in ${form.department}!`);
-            }
+            // Check College ID
+            const qColId = query(usersRef, where("instituteId", "==", instituteId), where("collegeId", "==", form.collegeId));
+            if (!(await getDocs(qColId)).empty) throw new Error(`College ID "${form.collegeId}" exists!`);
 
-            // ✅ STEP 2: Create User in Backend (Database Only)
+            // Check Roll No
+            const qRoll = query(usersRef, where("instituteId", "==", instituteId), where("department", "==", form.department), where("rollNo", "==", form.rollNo));
+            if (!(await getDocs(qRoll)).empty) throw new Error(`Roll No. ${form.rollNo} exists in ${form.department}!`);
+
+            // Create User
             toast.loading("Creating Student...", { id: toastId });
             
             const response = await fetch(`${BACKEND_URL}/createUser`, {
@@ -54,25 +69,24 @@ export default function AddStudent({ instituteId, instituteName }) {
                     ...form, 
                     role: 'student', 
                     instituteId, 
-                    instituteName 
+                    instituteName,
+                    extras: { 
+                        collegeId: form.collegeId,
+                        year: form.year,       // ✅ Save Year
+                        semester: form.semester // ✅ Save Semester
+                    }
                 })
             });
 
             const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Failed to create student");
 
-            if (!response.ok) {
-                throw new Error(data.error || "Failed to create student");
-            }
-
-            // ✅ STEP 3: Send Reset Email (Frontend)
             await sendPasswordResetEmail(auth, form.email);
 
-            // Success!
-            toast.success('Student added! Reset email sent.', { id: toastId });
-            setForm({ firstName: "", lastName: "", email: "", rollNo: "", department: "", password: "" });
+            toast.success('Student added successfully!', { id: toastId });
+            setForm({ firstName: "", lastName: "", email: "", rollNo: "", collegeId: "", department: "", year: "", semester: "", password: "" });
 
         } catch (err) {
-            console.error(err);
             toast.error("Error: " + err.message, { id: toastId });
         } finally {
             setLoading(false);
@@ -91,13 +105,36 @@ export default function AddStudent({ instituteId, instituteName }) {
                         <label>Department</label>
                         <select value={form.department} onChange={e => setForm({...form, department: e.target.value})} required>
                             <option value="">Select Department</option>
-                            {departments.map((dept, index) => (
-                                <option key={index} value={dept}>{dept}</option>
-                            ))}
+                            {departments.map((dept, index) => <option key={index} value={dept}>{dept}</option>)}
                         </select>
                     </div>
 
-                    <div className="input-group"><label>Roll No</label><input type="text" value={form.rollNo} onChange={e => setForm({...form, rollNo: e.target.value})} required /></div>
+                    {/* ✅ NEW: Year & Semester Row */}
+                    <div style={{display:'flex', gap:'15px'}}>
+                        <div className="input-group" style={{flex:1}}>
+                            <label>Year / Class</label>
+                            <select value={form.year} onChange={e => setForm({...form, year: e.target.value})} required>
+                                <option value="">Select</option>
+                                <option value="FE">FE (First Year)</option>
+                                <option value="SE">SE (Second Year)</option>
+                                <option value="TE">TE (Third Year)</option>
+                                <option value="BE">BE (Final Year)</option>
+                            </select>
+                        </div>
+                        <div className="input-group" style={{flex:1}}>
+                            <label>Semester</label>
+                            <select value={form.semester} onChange={e => setForm({...form, semester: e.target.value})} required disabled={!form.year}>
+                                <option value="">Select</option>
+                                {availableSemesters.map(sem => <option key={sem} value={sem}>Sem {sem}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style={{display:'flex', gap:'15px'}}>
+                        <div className="input-group" style={{flex:1}}><label>Roll No</label><input type="text" value={form.rollNo} onChange={e => setForm({...form, rollNo: e.target.value})} required /></div>
+                        <div className="input-group" style={{flex:1}}><label>College ID</label><input type="text" placeholder="e.g. PRN123" value={form.collegeId} onChange={e => setForm({...form, collegeId: e.target.value})} required /></div>
+                    </div>
+
                     <div className="input-group"><label>Email</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required /></div>
                     <div className="input-group"><label>Temp Password</label><input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required /></div>
                     

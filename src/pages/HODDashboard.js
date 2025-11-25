@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth, db, sendPasswordResetEmail } from '../firebase';
-import { doc, getDoc, collection, query, where, onSnapshot, deleteDoc } from "firebase/firestore";
+// ✅ Updated imports to include addDoc and serverTimestamp for Announcements
+import { doc, getDoc, collection, query, where, onSnapshot, deleteDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import toast, { Toaster } from 'react-hot-toast'; 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import './Dashboard.css';
@@ -21,6 +22,10 @@ export default function HODDashboard() {
 
     const [selectedRequestIds, setSelectedRequestIds] = useState([]);
     const [selectedUserIds, setSelectedUserIds] = useState([]); 
+
+    // ✅ Added Announcement State
+    const [announcements, setAnnouncements] = useState([]);
+    const [announcementForm, setAnnouncementForm] = useState({ title: '', message: '', targetYear: 'All' });
 
     const [modal, setModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, type: 'info' });
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -53,6 +58,15 @@ export default function HODDashboard() {
                 // Fetch Leaves
                 const qLeaves = query(collection(db, 'leave_requests'), where('instituteId', '==', data.instituteId), where('department', '==', data.department), where('status', '==', 'pending'));
                 onSnapshot(qLeaves, (snap) => setLeaves(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+
+                // ✅ Fetch Announcements
+                const qAnnouncements = query(collection(db, 'announcements'), where('instituteId', '==', data.instituteId), where('department', '==', data.department));
+                onSnapshot(qAnnouncements, (snap) => {
+                    const annData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    // Sort by createdAt descending (newest first)
+                    annData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                    setAnnouncements(annData);
+                });
             }
         };
         init();
@@ -104,7 +118,36 @@ export default function HODDashboard() {
 
     // --- ACTIONS ---
     
-    // ✅ 2. Send Notice Action
+    // ✅ Handle Post Announcement
+    const handlePostAnnouncement = async (e) => {
+        e.preventDefault();
+        const toastId = toast.loading("Posting...");
+        try {
+            await addDoc(collection(db, 'announcements'), {
+                ...announcementForm,
+                instituteId: hodInfo.instituteId,
+                department: hodInfo.department,
+                teacherName: `${hodInfo.firstName} ${hodInfo.lastName} (HOD)`,
+                role: 'hod',
+                createdAt: serverTimestamp()
+            });
+            toast.success("Announcement Sent!", { id: toastId });
+            setAnnouncementForm({ title: '', message: '', targetYear: 'All' });
+        } catch (err) {
+            toast.error("Failed to post.", { id: toastId });
+        }
+    };
+
+    // ✅ Handle Delete Announcement
+    const handleDeleteAnnouncement = async (id) => {
+        if(!window.confirm("Delete this announcement?")) return;
+        try {
+            await deleteDoc(doc(db, 'announcements', id));
+            toast.success("Deleted.");
+        } catch (e) { toast.error("Failed."); }
+    };
+
+    // 2. Send Notice Action
     const handleSendNotice = (student) => {
         toast.success(`Notice sent to ${student.firstName} (${student.email})`, {
             icon: '📨',
@@ -244,6 +287,8 @@ export default function HODDashboard() {
                 <ul className="menu">
                     <NavLink page="dashboard" iconClass="fa-th-large" label="Dashboard" />
                     <NavLink page="analytics" iconClass="fa-chart-pie" label="Analytics" /> 
+                    {/* ✅ Added Announcements Tab */}
+                    <NavLink page="announcements" iconClass="fa-bullhorn" label="Announcements" />
                     <NavLink page="leaves" iconClass="fa-calendar-check" label="Leave Requests" count={leaves.length} />
                     <NavLink page="requests" iconClass="fa-user-clock" label="Requests" count={studentRequests.length} />
                     <NavLink page="manage" iconClass="fa-users" label="Dept Users" />
@@ -251,7 +296,7 @@ export default function HODDashboard() {
                     <NavLink page="addTeacher" iconClass="fa-chalkboard-teacher" label="Add Teacher" />
                 </ul>
                 <div className="sidebar-footer">
-                    {/* ✅ 1. Fixed Logout Button */}
+                    {/* 1. Fixed Logout Button */}
                     <button className="logout-btn" onClick={() => signOut(auth).then(() => navigate('/'))}>
                         <i className="fas fa-sign-out-alt" style={{marginRight:'10px'}}></i> Logout
                     </button>
@@ -288,7 +333,7 @@ export default function HODDashboard() {
                 {activeTab === 'analytics' && (
                     <div className="content-section">
                         <h2 className="content-title">Attendance Analytics</h2>
-                        {/* ✅ MODERN SEARCH BAR */}
+                        {/* MODERN SEARCH BAR */}
                         <div className="search-box-wrapper">
                             <i className="fas fa-search search-icon"></i>
                             <input 
@@ -301,7 +346,7 @@ export default function HODDashboard() {
                         </div>
 
                         <div className="cards-grid" style={{gridTemplateColumns: '1fr 1fr'}}>
-                            {/* ✅ 3. Modern Donut Chart with Fixed Legend */}
+                            {/* 3. Modern Donut Chart with Fixed Legend */}
                             <div className="card" style={{height:'400px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
                                 <h3 style={{alignSelf:'flex-start', marginBottom:'10px'}}>Overview</h3>
                                 <ResponsiveContainer width="100%" height="100%">
@@ -337,14 +382,14 @@ export default function HODDashboard() {
                                                 <tr key={s.id}>
                                                     <td>
                                                         <div style={{fontWeight:'600'}}>{s.firstName} {s.lastName}</div>
-                                                        {/* ✅ SHOW YEAR */}
+                                                        {/* SHOW YEAR */}
                                                         <div style={{fontSize:'11px', color:'#64748b'}}>
                                                             {s.rollNo} • <span style={{color:'#2563eb', fontWeight:'bold'}}>{s.year || 'N/A'}</span>
                                                         </div>
                                                     </td>
                                                     <td><span className="status-badge-pill" style={{background:'#fef2f2', color:'#dc2626'}}>{s.percentage.toFixed(0)}%</span></td>
                                                     <td>
-                                                        {/* ✅ 2. Send Notice Button */}
+                                                        {/* 2. Send Notice Button */}
                                                         <button 
                                                             onClick={() => handleSendNotice(s)}
                                                             className="btn-action"
@@ -358,6 +403,51 @@ export default function HODDashboard() {
                                             {filteredDefaulters.length === 0 && <tr><td colSpan="3" style={{textAlign:'center', padding:'20px', color:'green'}}>All students are safe!</td></tr>}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ✅ ADDED ANNOUNCEMENTS SECTION */}
+                {activeTab === 'announcements' && (
+                    <div className="content-section">
+                        <h2 className="content-title">📢 Announcements</h2>
+                        <p className="content-subtitle">Broadcast messages to specific years or the whole department.</p>
+                        <div className="cards-grid">
+                            {/* Form */}
+                            <div className="card">
+                                <h3>Create Announcement</h3>
+                                <form onSubmit={handlePostAnnouncement} style={{marginTop:'15px'}}>
+                                    <div className="input-group">
+                                        <label>Target Audience</label>
+                                        <select value={announcementForm.targetYear} onChange={e => setAnnouncementForm({...announcementForm, targetYear: e.target.value})} required>
+                                            <option value="All">All Students</option>
+                                            <option value="FE">FE (First Year)</option>
+                                            <option value="SE">SE (Second Year)</option>
+                                            <option value="TE">TE (Third Year)</option>
+                                            <option value="BE">BE (Final Year)</option>
+                                        </select>
+                                    </div>
+                                    <div className="input-group"><label>Title</label><input type="text" required value={announcementForm.title} onChange={e => setAnnouncementForm({...announcementForm, title: e.target.value})} /></div>
+                                    <div className="input-group"><label>Message</label><textarea className="modern-input" rows="3" required value={announcementForm.message} onChange={e => setAnnouncementForm({...announcementForm, message: e.target.value})} /></div>
+                                    <button className="btn-primary">Post</button>
+                                </form>
+                            </div>
+
+                            {/* History */}
+                            <div className="card">
+                                <h3>History</h3>
+                                <div style={{display:'flex', flexDirection:'column', gap:'10px', maxHeight:'400px', overflowY:'auto', marginTop:'10px'}}>
+                                    {announcements.map(a => (
+                                        <div key={a.id} style={{padding:'12px', background:'#f8fafc', borderRadius:'8px', border:'1px solid #e2e8f0', position:'relative'}}>
+                                            <span className="status-badge-pill" style={{fontSize:'10px', marginBottom:'5px'}}>{a.targetYear === 'All' ? 'Everyone' : a.targetYear}</span>
+                                            <h4 style={{margin:'0 0 5px 0'}}>{a.title}</h4>
+                                            <p style={{fontSize:'13px', color:'#64748b', margin:0}}>{a.message}</p>
+                                            <button onClick={() => handleDeleteAnnouncement(a.id)} style={{position:'absolute', top:'10px', right:'10px', background:'none', border:'none', color:'#ef4444', cursor:'pointer'}}><i className="fas fa-trash"></i></button>
+                                        </div>
+                                    ))}
+                                    {announcements.length === 0 && <p style={{color:'#94a3b8', fontStyle:'italic'}}>No announcements.</p>}
                                 </div>
                             </div>
                         </div>
