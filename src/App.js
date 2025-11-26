@@ -3,6 +3,10 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { Toaster } from 'react-hot-toast';
 import IOSSplashScreen from "./components/IOSSplashScreen";
+import logo from "./assets/logo.png"; 
+
+// ✅ Import the Skeleton Component (Make sure you created this from the previous step)
+import DashboardSkeleton from "./components/DashboardSkeleton";
 
 // Lazy load components
 const Login = lazy(() => import("./pages/Login"));
@@ -19,18 +23,19 @@ function App() {
   const location = useLocation();
   const [showSplash, setShowSplash] = useState(true);
 
-  // Show Splash Screen first
+  // 1. Show App Logo Splash Screen FIRST
   if (showSplash) {
     return (
       <IOSSplashScreen 
-        logoSrc="https://iili.io/KoAVeZg.md.png" 
+        logoSrc={logo} 
         onComplete={() => setShowSplash(false)} 
       />
     );
   }
 
   return (
-    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Loading...</div>}>
+    // 2. After Splash, show the Skeleton while the actual page loads (Replaces "Loading..." text)
+    <Suspense fallback={<DashboardSkeleton />}>
       <Toaster position="top-center" reverseOrder={false} />
       
       {/* mode="wait" ensures the old page slides out before the new one slides in */}

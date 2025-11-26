@@ -5,6 +5,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, addDoc, collection } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import AnimatedPage from "../components/AnimatedPage";
+import logo from "../assets/logo.png";
 import { motion } from "framer-motion";
 
 export default function Signup() {
@@ -80,7 +81,7 @@ export default function Signup() {
                 <div className="login-header">
                     <motion.img
                         className="login-logo"
-                        src="https://iili.io/KoAVeZg.md.png"
+                        src={logo}
                         alt="AcadeX Logo"
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}

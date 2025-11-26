@@ -1,9 +1,14 @@
 import React from 'react';
 import './Skeleton.css';
 
-const Skeleton = ({ type = 'text', height, width, style }) => {
-  const classes = `skeleton skeleton-${type}`;
-  return <div className={classes} style={{ height, width, ...style }}></div>;
+const Skeleton = ({ width, height, borderRadius, style, className }) => {
+  const styles = {
+    width: width,
+    height: height,
+    borderRadius: borderRadius,
+    ...style,
+  };
+  return <div className={`skeleton ${className || ''}`} style={styles} />;
 };
 
 export default Skeleton;

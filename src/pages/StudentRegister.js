@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
+import logo from "../assets/logo.png";
 import './Login.css'; 
 
 import IOSPage from "../components/IOSPage";
@@ -117,7 +118,7 @@ export default function StudentRegister() {
                 
                 <div className="login-container">
                     <div className="login-header">
-                        <img className="login-logo" src="https://iili.io/KoAVeZg.md.png" alt="AcadeX" />
+                        <img className="login-logo" src={logo} alt="AcadeX" />
                         <h1>Student Registration</h1>
                     </div>
 

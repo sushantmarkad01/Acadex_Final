@@ -5,7 +5,9 @@ import { auth, db } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc, orderBy, limit } from 'firebase/firestore';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import toast, { Toaster } from 'react-hot-toast';
+import logo from "../assets/logo.png";
 import './Dashboard.css';
+
 
 // Component Imports
 import FreePeriodTasks from './FreePeriodTasks';
@@ -426,7 +428,7 @@ export default function StudentDashboard() {
       {isMobileNavOpen && <div className="nav-overlay" onClick={() => setIsMobileNavOpen(false)} />}
       
       <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`}>
-        <div className="logo-container"><img src="https://iili.io/KoAVeZg.md.png" alt="AcadeX" className="sidebar-logo"/><span className="logo-text">Acadex</span></div>
+        <div className="logo-container"><img src={logo} alt="AcadeX" className="sidebar-logo"/><span className="logo-text">Acadex</span></div>
         {user && (
             <div className="teacher-info" onClick={() => { setActivePage('profile'); setIsMobileNavOpen(false); }} style={{ cursor: 'pointer' }}>
                 <h4>{user.firstName} {user.lastName}</h4>
@@ -453,7 +455,7 @@ export default function StudentDashboard() {
       <main className="main-content">
         <header className="mobile-header">
             <button className="hamburger-btn" onClick={() => setIsMobileNavOpen(true)}><i className="fas fa-bars"></i></button>
-            <div className="mobile-brand"><img src="https://iili.io/KoAVeZg.md.png" alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
+            <div className="mobile-brand"><img src={logo} alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
             <div style={{width:'40px'}}></div>
         </header>
         {renderContent()}

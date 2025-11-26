@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import logo from "../assets/logo.png";
 import './Login.css'; 
 
 // ✅ Animation Imports
@@ -10,10 +9,11 @@ import useIOSSound from "../hooks/useIOSSound";
 import { motion } from "framer-motion";
 import { buttonTap } from "../animations/interactionVariants";
 
+const BACKEND_URL = "https://acadex-backend-n2wh.onrender.com"; // ✅ Use your Backend URL
+
 export default function CheckStatus() {
   const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
-  const [status, setStatus] = useState(''); // 'approved', 'pending', 'denied', 'error'
+  const [result, setResult] = useState(null); // Stores the backend response
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
@@ -21,76 +21,69 @@ export default function CheckStatus() {
 
   const handleCheckStatus = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setStatus('');
+    setResult(null);
     setLoading(true);
     playSound('tap');
 
     if (!email) {
-      setStatus('error');
-      setMessage('Please enter your email address.');
+      setResult({ error: true, message: 'Please enter your email address.' });
       playSound('error');
       setLoading(false);
       return;
     }
 
     try {
-      // 1️⃣ Check Student Requests (Pending / Denied)
-      const qRequest = query(collection(db, "student_requests"), where("email", "==", email));
-      const snapRequest = await getDocs(qRequest);
+      // ✅ Call Backend API instead of direct Firestore
+      const response = await fetch(`${BACKEND_URL}/checkStatus`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+      });
 
-      if (!snapRequest.empty) {
-        const data = snapRequest.docs[0].data();
-        
-        if (data.status === 'pending') {
-          setStatus('pending');
-          setMessage('⏳ Application Pending. Waiting for HOD Approval.');
-          playSound('success'); // Soft success for found
-        } else if (data.status === 'denied') {
-          setStatus('denied');
-          setMessage('❌ Application Denied. Please contact your HOD.');
-          playSound('error');
-        } else {
-            setStatus('error');
-            setMessage('Unknown status.');
-        }
-      } else {
-        // 2️⃣ Check Users Collection (Approved & Active)
-        // If approved, the request doc is deleted, so we must check the 'users' table.
-        const qUser = query(collection(db, "users"), where("email", "==", email));
-        const snapUser = await getDocs(qUser);
+      const data = await response.json();
 
-        if (!snapUser.empty) {
-          setStatus('approved');
-          setMessage('✅ Account Active! You can Login now.');
+      if (!response.ok) {
+          throw new Error(data.error || "Failed to check status");
+      }
+
+      // ✅ Handle Response
+      if (data.found) {
           playSound('success');
-        } else {
-          // 3️⃣ Not found anywhere
-          setStatus('error');
-          setMessage('No application found with this email.');
+          setResult({ 
+              success: true, 
+              status: data.status, 
+              message: data.message 
+          });
+      } else {
           playSound('error');
-        }
+          setResult({ 
+              success: false, 
+              message: "No application found with this email." 
+          });
       }
 
     } catch (error) {
-      setStatus('error');
-      setMessage('Error checking status. Try again.');
-      console.error("Error:", error);
+      console.error(error);
       playSound('error');
+      setResult({ error: true, message: "Server Error: Could not check status." });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
-  // Dynamic CSS Class for Message
-  const getMessageClass = () => {
-    switch (status) {
-      case 'approved': return 'success-message';
-      case 'pending': return 'info-message'; // Yellow/Blue style
-      case 'denied': 
-      case 'error': return 'error-message';
-      default: return '';
-    }
+  // Helper for status colors
+  const getStatusColor = (status) => {
+      if (status === 'approved') return '#dcfce7'; // Green
+      if (status === 'pending') return '#fef9c3'; // Yellow
+      if (status === 'denied') return '#fee2e2'; // Red
+      return '#f3f4f6'; // Grey
+  };
+
+  const getStatusTextColor = (status) => {
+      if (status === 'approved') return '#166534';
+      if (status === 'pending') return '#854d0e';
+      if (status === 'denied') return '#991b1b';
+      return '#374151';
   };
 
   return (
@@ -98,10 +91,11 @@ export default function CheckStatus() {
       <div className="login-wrapper">
         <div className="login-container">
           <div className="login-header">
-            <img className="login-logo" src="https://iili.io/KoAVeZg.md.png" alt="AcadeX Logo" />
-            <h1>Check Status</h1>
+            <img className="login-logo" src={logo} alt="App Logo" />
+            <h1>Check Application Status</h1>
+            <p>Enter your email to track your request.</p>
           </div>
-          
+
           <form className="login-form" onSubmit={handleCheckStatus}>
             <div className="input-group">
               <label>Email Address</label>
@@ -114,14 +108,23 @@ export default function CheckStatus() {
               />
             </div>
             
-            {message && (
+            {/* ✅ Result Display */}
+            {result && (
                 <motion.div 
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={getMessageClass()}
-                    style={{ padding: '12px', borderRadius: '10px', textAlign: 'center', fontWeight: '500', marginBottom: '15px' }}
+                    style={{ 
+                        padding: '15px', 
+                        borderRadius: '10px', 
+                        textAlign: 'center', 
+                        fontWeight: '600', 
+                        marginBottom: '15px',
+                        backgroundColor: result.success ? getStatusColor(result.status) : '#fee2e2',
+                        color: result.success ? getStatusTextColor(result.status) : '#991b1b',
+                        border: '1px solid rgba(0,0,0,0.05)'
+                    }}
                 >
-                    {message}
+                    {result.message}
                 </motion.div>
             )}
 

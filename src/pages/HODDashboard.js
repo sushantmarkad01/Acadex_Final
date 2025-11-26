@@ -6,6 +6,7 @@ import { auth, db, sendPasswordResetEmail } from '../firebase';
 import { doc, getDoc, collection, query, where, onSnapshot, deleteDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import toast, { Toaster } from 'react-hot-toast'; 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import logo from "../assets/logo.png";
 import './Dashboard.css';
 
 import ManageTimetable from './ManageTimetable';
@@ -282,7 +283,7 @@ export default function HODDashboard() {
             {isMobileNavOpen && <div className="nav-overlay" onClick={() => setIsMobileNavOpen(false)}></div>}
             
             <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`}>
-                <div className="logo-container"><img src="https://iili.io/KoAVeZg.md.png" alt="Logo" className="sidebar-logo"/><span className="logo-text">Acadex</span></div>
+                <div className="logo-container"><img src={logo} alt="Logo" className="sidebar-logo"/><span className="logo-text">Acadex</span></div>
                 {hodInfo && <div className="teacher-info"><h4>{hodInfo.firstName} (HOD)</h4><p>{hodInfo.department}</p></div>}
                 <ul className="menu">
                     <NavLink page="dashboard" iconClass="fa-th-large" label="Dashboard" />
@@ -290,7 +291,7 @@ export default function HODDashboard() {
                     {/* ✅ Added Announcements Tab */}
                     <NavLink page="announcements" iconClass="fa-bullhorn" label="Announcements" />
                     <NavLink page="leaves" iconClass="fa-calendar-check" label="Leave Requests" count={leaves.length} />
-                    <NavLink page="requests" iconClass="fa-user-clock" label="Requests" count={studentRequests.length} />
+                    <NavLink page="requests" iconClass="fa-user-clock" label="Applications" count={studentRequests.length} />
                     <NavLink page="manage" iconClass="fa-users" label="Dept Users" />
                     <NavLink page="timetable" iconClass="fa-calendar-alt" label="Timetable" />
                     <NavLink page="addTeacher" iconClass="fa-chalkboard-teacher" label="Add Teacher" />
@@ -306,7 +307,7 @@ export default function HODDashboard() {
             <main className="main-content">
                 <header className="mobile-header">
                     <button className="hamburger-btn" onClick={() => setIsMobileNavOpen(true)}><i className="fas fa-bars"></i></button>
-                    <div className="mobile-brand"><img src="https://iili.io/KoAVeZg.md.png" alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
+                    <div className="mobile-brand"><img src={logo} alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
                     <div style={{width:'40px'}}></div>
                 </header>
 
@@ -564,7 +565,7 @@ export default function HODDashboard() {
                                 <div className="input-group"><label>Last Name</label><input type="text" required value={teacherForm.lastName} onChange={e => setTeacherForm({...teacherForm, lastName: e.target.value})} /></div>
                                 <div className="input-group"><label>Subject</label><input type="text" placeholder="e.g. Data Structures" required value={teacherForm.subject} onChange={e => setTeacherForm({...teacherForm, subject: e.target.value})} /></div>
                                 <div className="input-group"><label>Email</label><input type="email" required value={teacherForm.email} onChange={e => setTeacherForm({...teacherForm, email: e.target.value})} /></div>
-                                <div className="input-group"><label>Temp Password</label><input type="password" required value={teacherForm.password} onChange={e => setTeacherForm({...teacherForm, password: e.target.value})} /></div>
+                                <div className="input-group"><label>Password</label><input type="password" required value={teacherForm.password} onChange={e => setTeacherForm({...teacherForm, password: e.target.value})} /></div>
                                 <button className="btn-primary" disabled={loading}>{loading ? 'Adding...' : 'Add Teacher'}</button>
                             </form>
                         </div>

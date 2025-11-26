@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
+import logo from "../assets/logo.png";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { auth,TZprovider, signInWithPopup } from "../firebase";
 import { GoogleAuthProvider } from "firebase/auth";
@@ -80,7 +81,7 @@ export default function Login() {
           <div className="login-header">
             <img
               className="login-logo"
-              src="https://iili.io/KoAVeZg.md.png"
+              src={logo}
               alt="App Logo"
             />
             <h1>

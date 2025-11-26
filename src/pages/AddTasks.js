@@ -32,6 +32,7 @@ export default function AddTasks() {
             );
             const unsubscribe = onSnapshot(q, (snapshot) => {
                 const tasksData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Sort by created time (newest first)
                 tasksData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
                 setMyTasks(tasksData);
             });
@@ -39,121 +40,168 @@ export default function AddTasks() {
         }
     }, []);
 
-    // 3. Create Task
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!teacherInfo) return;
-
+        if (!teacherInfo) return toast.error("Teacher info not loaded.");
+        
         setLoading(true);
-        const toastId = toast.loading("Assigning Task...");
-
         try {
             await addDoc(collection(db, 'tasks'), {
                 ...task,
                 teacherId: auth.currentUser.uid,
                 teacherName: `${teacherInfo.firstName} ${teacherInfo.lastName}`,
-                instituteId: teacherInfo.instituteId,
                 department: teacherInfo.department,
-                createdAt: serverTimestamp(),
-                status: 'active'
+                instituteId: teacherInfo.instituteId,
+                createdAt: serverTimestamp()
             });
-            toast.success("Task Assigned!", { id: toastId });
+            toast.success("Task Assigned!");
             setTask({ title: '', description: '', link: '', deadline: '', assignTo: 'All Students' });
-        } catch (error) {
-            toast.error("Error: " + error.message, { id: toastId });
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to assign task.");
         } finally {
             setLoading(false);
         }
     };
 
-    // 4. ✅ FIXED: Delete Task (Modern Custom Toast)
-    const handleDelete = (id) => {
-        toast((t) => (
-            <div style={{textAlign: 'center'}}>
-                <p style={{margin: '0 0 10px 0', fontWeight: '600', color:'#1f2937'}}>Delete Task?</p>
-                <p style={{margin: '0 0 15px 0', fontSize:'13px', color:'#64748b'}}>This cannot be undone.</p>
-                <div style={{display: 'flex', gap: '10px', justifyContent: 'center'}}>
-                    <button 
-                        onClick={() => toast.dismiss(t.id)}
-                        style={{padding: '6px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize:'13px', fontWeight:'600'}}
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        onClick={() => {
-                            toast.dismiss(t.id);
-                            performDelete(id);
-                        }}
-                        style={{padding: '6px 12px', borderRadius: '8px', border: 'none', background: '#ef4444', color: 'white', cursor: 'pointer', fontSize:'13px', fontWeight:'600'}}
-                    >
-                        Delete
-                    </button>
-                </div>
-            </div>
-        ), { duration: 5000, style: { minWidth: '250px' } });
-    };
-
-    const performDelete = async (id) => {
-        const toastId = toast.loading("Deleting...");
-        try {
-            await deleteDoc(doc(db, "tasks", id));
-            toast.success("Task deleted", { id: toastId });
-        } catch(e) { 
-            toast.error("Failed to delete", { id: toastId }); 
+    const handleDelete = async (id) => {
+        if(window.confirm("Delete this task?")) {
+            await deleteDoc(doc(db, 'tasks', id));
+            toast.success("Task removed.");
         }
     };
 
     return (
         <div className="content-section">
-            <div style={{display:'grid', gap:'30px', gridTemplateColumns: '1fr 1fr'}}>
-                
-                {/* LEFT: CREATE FORM */}
-                <div>
-                    <h2 className="content-title">Assign New Task</h2>
-                    <div className="card">
-                        <form onSubmit={handleSubmit}>
-                            <div className="input-group">
-                                <label>Task Title</label>
-                                <input type="text" required value={task.title} onChange={e => setTask({...task, title: e.target.value})} />
-                            </div>
-                            <div className="input-group">
-                                <label>Description</label>
-                                <textarea className="modern-input" rows="3" required value={task.description} onChange={e => setTask({...task, description: e.target.value})} />
-                            </div>
-                            <div className="input-group">
-                                <label>Link (Optional)</label>
-                                <input type="url" value={task.link} onChange={e => setTask({...task, link: e.target.value})} />
-                            </div>
-                            <div className="input-group">
-                                <label>Deadline</label>
-                                <input type="datetime-local" value={task.deadline} onChange={e => setTask({...task, deadline: e.target.value})} />
-                            </div>
-                            <button className="btn-primary" disabled={loading}>{loading ? 'Assigning...' : 'Assign Task'}</button>
-                        </form>
+            <h2 className="content-title">Task Management</h2>
+            <p className="content-subtitle">Assign homework and projects to your students.</p>
+
+            {/* --- LAYOUT CHANGE: Removed outer 'cards-grid' to allow vertical stacking --- */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+
+                {/* CARD 1: Assign Task Form */}
+                <div className="card">
+                    <div style={{borderBottom:'1px solid #f1f5f9', paddingBottom:'15px', marginBottom:'20px'}}>
+                        <h3 style={{margin:0, color:'#1e293b'}}>Assign New Task</h3>
                     </div>
+                    
+                    <form onSubmit={handleSubmit}>
+                        <div className="input-group">
+                            <label>Target Audience</label>
+                            <select value={task.assignTo} onChange={e => setTask({...task, assignTo: e.target.value})}>
+                                <option value="All Students">All Students</option>
+                                <option value="FE">First Year (FE)</option>
+                                <option value="SE">Second Year (SE)</option>
+                                <option value="TE">Third Year (TE)</option>
+                                <option value="BE">Final Year (BE)</option>
+                            </select>
+                        </div>
+
+                        <div className="input-group">
+                            <label>Task Title</label>
+                            <input 
+                                type="text" 
+                                placeholder="e.g. Complete Lab 3" 
+                                value={task.title} 
+                                onChange={e => setTask({...task, title: e.target.value})} 
+                                required 
+                            />
+                        </div>
+
+                        <div className="input-group">
+                            <label>Description / Instructions</label>
+                            <textarea 
+                                className="modern-input" 
+                                rows="3" 
+                                placeholder="Details about the task..."
+                                value={task.description}
+                                onChange={e => setTask({...task, description: e.target.value})}
+                                required 
+                            ></textarea>
+                        </div>
+
+                        <div style={{display:'flex', gap:'15px', flexWrap:'wrap'}}>
+                            <div className="input-group" style={{flex:1}}>
+                                <label>Reference Link (Optional)</label>
+                                <input 
+                                    type="url" 
+                                    placeholder="https://..." 
+                                    value={task.link} 
+                                    onChange={e => setTask({...task, link: e.target.value})} 
+                                />
+                            </div>
+                            <div className="input-group" style={{flex:1}}>
+                                <label>Deadline</label>
+                                <input 
+                                    type="date" 
+                                    value={task.deadline} 
+                                    onChange={e => setTask({...task, deadline: e.target.value})} 
+                                    required 
+                                />
+                            </div>
+                        </div>
+
+                        <button className="btn-primary" disabled={loading}>
+                            {loading ? 'Assigning...' : 'Assign Task'}
+                        </button>
+                    </form>
                 </div>
 
-                {/* RIGHT: MY RECENT TASKS */}
+                {/* CARD 2: Active Tasks List (Now separate below the form) */}
                 <div>
-                    <h2 className="content-title">My Active Tasks</h2>
-                    <div className="cards-grid" style={{gridTemplateColumns:'1fr'}}>
+                    <h3 style={{margin:'0 0 15px 0', color:'#334155'}}>My Active Tasks</h3>
+                    
+                    <div className="cards-grid">
                         {myTasks.length > 0 ? (
                             myTasks.map(t => (
-                                <div key={t.id} className="card" style={{padding:'15px', position:'relative'}}>
-                                    <h4 style={{margin:'0 0 5px 0'}}>{t.title}</h4>
-                                    <p style={{fontSize:'13px', color:'#64748b', margin:'0 0 10px 0'}}>{t.description}</p>
-                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                        <span className="status-badge-pill" style={{fontSize:'11px'}}>
-                                            To: {t.department}
+                                <div key={t.id} className="card" style={{padding:'20px', borderLeft: '4px solid #3b82f6', position:'relative'}}>
+                                    
+                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', marginBottom:'10px'}}>
+                                        <h4 style={{margin:0, fontSize:'16px', color:'#1e293b'}}>{t.title}</h4>
+                                        <span className="status-badge-pill" style={{fontSize:'10px', background:'#eff6ff', color:'#2563eb'}}>
+                                            {t.assignTo}
                                         </span>
-                                        <button onClick={() => handleDelete(t.id)} style={{background:'none', border:'none', color:'#ef4444', cursor:'pointer'}}>
+                                    </div>
+
+                                    <p style={{fontSize:'13px', color:'#64748b', margin:'0 0 15px 0', lineHeight:'1.5'}}>
+                                        {t.description}
+                                    </p>
+
+                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #f1f5f9', paddingTop:'12px'}}>
+                                        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                            <span style={{fontSize:'12px', color:'#94a3b8'}}>
+                                                <i className="fas fa-calendar-alt" style={{marginRight:'5px'}}></i>
+                                                {t.deadline}
+                                            </span>
+                                            {t.link && (
+                                                <a href={t.link} target="_blank" rel="noreferrer" style={{fontSize:'12px', color:'#2563eb', textDecoration:'none'}}>
+                                                    <i className="fas fa-link" style={{marginRight:'4px'}}></i> Link
+                                                </a>
+                                            )}
+                                        </div>
+
+                                        <button 
+                                            onClick={() => handleDelete(t.id)} 
+                                            style={{
+                                                background: '#fee2e2', 
+                                                color: '#ef4444', 
+                                                border:'none', 
+                                                borderRadius:'6px', 
+                                                padding:'6px 10px', 
+                                                cursor:'pointer'
+                                            }}
+                                            title="Delete Task"
+                                        >
                                             <i className="fas fa-trash"></i>
                                         </button>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <p style={{color:'#64748b', fontStyle:'italic'}}>No tasks created yet.</p>
+                            <div className="card" style={{textAlign:'center', padding:'40px', color:'#94a3b8'}}>
+                                <i className="fas fa-clipboard-check" style={{fontSize:'30px', marginBottom:'10px', opacity:0.5}}></i>
+                                <p>No active tasks found.</p>
+                            </div>
                         )}
                     </div>
                 </div>

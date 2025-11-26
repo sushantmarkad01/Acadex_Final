@@ -1,28 +1,30 @@
 .skeleton {
-  background-color: #e2e8f0;
-  border-radius: 8px;
-  animation: skeleton-loading 1.5s infinite linear;
+  background-color: #e2e8f0; /* Light gray base */
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px; /* Smooth corners */
 }
 
-.skeleton-text { height: 20px; margin-bottom: 10px; border-radius: 4px; }
-.skeleton-block { height: 200px; width: 100%; border-radius: 16px; }
-.skeleton-circle { width: 50px; height: 50px; border-radius: 50%; }
-
-@keyframes skeleton-loading {
-  0% { background-color: #cbd5e1; }
-  50% { background-color: #f1f5f9; }
-  100% { background-color: #cbd5e1; }
+/* The Shimmer Effect */
+.skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.6) 50%, /* Brighter shine center */
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-100%);
+  animation: shimmer 1.5s infinite;
 }
 
-/* Dark mode support for skeleton */
-[data-theme="dark"] .skeleton {
-    background-color: #334155;
-}
-[data-theme="dark"] .skeleton-loading {
-    animation: skeleton-loading-dark 1.5s infinite linear;
-}
-@keyframes skeleton-loading-dark {
-    0% { background-color: #1e293b; }
-    50% { background-color: #334155; }
-    100% { background-color: #1e293b; }
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
