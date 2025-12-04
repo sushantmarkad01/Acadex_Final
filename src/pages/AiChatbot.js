@@ -1,213 +1,272 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './AiChatbot.css';
 
-const API_URL = "https://acadex-backend-n2wh.onrender.com"; 
+const BASE_URL = "https://acadex-backend-n2wh.onrender.com"; 
 
 export default function AiChatbot({ user, isOpenProp, onClose }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState([
-        { sender: 'bot', text: `Hey ${user.firstName}! I am your AcadeX Coach. \n\nI can help you with:\n**1. Study Plans**\n**2. Career Roadmaps**\n**3. Subject Notes**\n\nType "Go" to start a mission!` }
-    ]);
+    const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    
+    // Core State
+    const [activeTopic, setActiveTopic] = useState(null);
+
+    // Quiz State
+    const [quizMode, setQuizMode] = useState(false);
+    const [activeQuiz, setActiveQuiz] = useState(null); 
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const [selectedOption, setSelectedOption] = useState(null);
+    const [showExplanation, setShowExplanation] = useState(false);
+    const [score, setScore] = useState(0);
+    const [quizFinished, setQuizFinished] = useState(false);
+
     const messagesEndRef = useRef(null);
 
-    // Sync open state with Dashboard button
     useEffect(() => {
         if (isOpenProp) setIsOpen(true);
-    }, [isOpenProp]);
+        if (messages.length === 0) {
+            setMessages([{ 
+                sender: 'bot', 
+                text: `Hey ${user?.firstName || 'Student'}! 👋\nI'm your AcadeX Coach.\n\nType a topic (e.g. "Photosynthesis") to start!` 
+            }]);
+        }
+    }, [isOpenProp, user]);
 
-    // Auto-scroll to bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+    }, [messages, quizMode, loading]);
 
     const handleSend = async () => {
         if (!input.trim()) return;
-        await processMessage(input, 'chat');
-    };
-
-    const handleQuickAction = (type) => {
-        const topic = input.trim() || "Current Topic";
-        let prompt = "";
-        
-        if (type === 'notes') prompt = `Generate revision notes for: ${topic}`;
-        if (type === 'mcqs') prompt = `Generate 5 MCQs for: ${topic}`;
-        
-        processMessage(prompt, type);
-    };
-
-    const processMessage = async (textToSend, type = 'chat') => {
-        // 1. Add User Message
-        const userMessage = { sender: 'user', text: textToSend };
-        setMessages(prev => [...prev, userMessage]);
+        const textToSend = input;
         setInput('');
+        addMessage('user', textToSend);
+
+        if (!activeTopic) await handleSetTopic(textToSend);
+        else await processChat(textToSend);
+    };
+
+    const addMessage = (sender, text) => setMessages(prev => [...prev, { sender, text }]);
+
+    const handleSetTopic = async (topic) => {
         setLoading(true);
-
         try {
-            // 2. Determine Endpoint
-            let endpoint = '/chat';
-            let body = { 
-                message: textToSend,
-                userContext: {
-                    firstName: user.firstName,
-                    role: user.role,
-                    department: user.department,
-                    careerGoal: user.careerGoal || "General Engineering"
-                }
-            };
-
-            if (type === 'notes') {
-                endpoint = '/generateNotes';
-                body = { topic: textToSend, department: user.department, level: 'Intermediate' };
-            }
-            if (type === 'mcqs') {
-                endpoint = '/generateMCQs';
-                body = { topic: textToSend, count: 5, department: user.department };
-            }
-
-            // 3. Call Backend
-            const response = await fetch(`${API_URL}${endpoint}`, {
+            await fetch(`${BASE_URL}/storeTopic`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify({ userId: user?.uid || 'guest', topic })
             });
-
-            const data = await response.json();
-
-            if (!response.ok) throw new Error(data.error || "Server Error");
-
-            // 4. Handle Response (MCQ vs Text)
-            let botResponse = data.reply || data.notes;
-            
-            if (type === 'mcqs' && data.mcqs) {
-                // Format MCQs nicely
-                botResponse = data.mcqs.map((m, i) => 
-                    `**Q${i+1}: ${m.q}**\nA) ${m.options[0]}\nB) ${m.options[1]}\nC) ${m.options[2]}\nD) ${m.options[3]}\n\n*Answer: ${m.options[m.answerIndex]}*\n_(Exp: ${m.explanation})_`
-                ).join('\n\n');
-            }
-
-            setMessages(prev => [...prev, { sender: 'bot', text: botResponse }]);
-
-        } catch (error) {
-            console.error("Chat Error:", error);
-            setMessages(prev => [...prev, { sender: 'bot', text: "⚠️ My brain is buffering... Please try again!" }]);
+            setActiveTopic(topic);
+            addMessage('bot', `✅ **Topic Set: ${topic}**\nUse the buttons above for Quiz or Notes!`);
+        } catch (err) {
+            setActiveTopic(topic);
+            addMessage('bot', `Topic set to "${topic}".`);
         } finally {
             setLoading(false);
         }
     };
 
-    const toggleChat = () => {
-        const newState = !isOpen;
-        setIsOpen(newState);
-        if (!newState && onClose) onClose();
+    const handleActionClick = async (type) => {
+        if (!activeTopic) {
+            addMessage('bot', "⚠️ **Please enter a topic first** below.");
+            return;
+        }
+        setLoading(true);
+        try {
+            const endpoint = type === 'notes' ? '/notes' : '/quiz';
+            const res = await fetch(`${BASE_URL}${endpoint}?userId=${user?.uid || 'guest'}`);
+            const data = await res.json();
+            if (type === 'notes') addMessage('bot', data.note.content);
+            else { setActiveQuiz(data.quiz); startQuizMode(data.quiz); }
+        } catch (err) {
+            addMessage('bot', "⚠️ Error generating content. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // ✅ SMART MESSAGE RENDERER (Handles **Bold** and Links)
+    const processChat = async (text) => {
+        setLoading(true);
+        try {
+            const res = await fetch(`${BASE_URL}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text, userContext: user })
+            });
+            const data = await res.json();
+            addMessage('bot', data.reply);
+        } catch (error) {
+            addMessage('bot', "⚠️ Error connecting.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Quiz Functions
+    const startQuizMode = () => {
+        setQuizMode(true); setQuizFinished(false); setCurrentQuestionIndex(0);
+        setScore(0); setSelectedOption(null); setShowExplanation(false);
+    };
+    const handleOptionSelect = (idx, correct) => {
+        if (selectedOption !== null) return;
+        setSelectedOption(idx); setShowExplanation(true);
+        if (idx === correct) setScore(s => s + 1);
+    };
+    const nextQuestion = () => {
+        if (currentQuestionIndex < activeQuiz.questions.length - 1) {
+            setCurrentQuestionIndex(p => p + 1); setSelectedOption(null); setShowExplanation(false);
+        } else setQuizFinished(true);
+    };
+    const exitQuiz = () => { setQuizMode(false); setActiveQuiz(null); addMessage('bot', `Quiz Done! Score: ${score}`); };
+
+    const toggleChat = () => {
+        setIsOpen(!isOpen);
+        if (isOpen && onClose) onClose();
+    };
+
     const renderMessage = (text) => {
         if (!text) return null;
-        let cleanText = text.replace(/^"|"$/g, '').replace(/\\n/g, '\n'); // Cleanup formatting
-
-        return cleanText.split('\n').map((line, index) => {
-            // 1. Split by Bold Markers (**)
-            const parts = line.split(/(\*\*.*?\*\*)/g); 
-            
-            return (
-                <div key={index} style={{ minHeight: '1.4em', marginBottom: '4px', lineHeight: '1.5' }}>
-                    {parts.map((part, i) => {
-                        // Bold Text
-                        if (part.startsWith('**') && part.endsWith('**')) {
-                            return <strong key={i} style={{color: '#1e3a8a'}}>{part.slice(2, -2)}</strong>;
-                        }
-                        
-                        // 2. Split by URLs for Links
-                        const urlRegex = /(https?:\/\/[^\s]+)/g;
-                        const subParts = part.split(urlRegex);
-                        
-                        return subParts.map((sub, j) => {
-                            if (sub.match(urlRegex)) {
-                                const cleanUrl = sub.replace(/[).,;]$/, ''); // Trim trailing punctuation
-                                return (
-                                    <a 
-                                        key={j} 
-                                        href={cleanUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="ai-link"
-                                    >
-                                        Link ↗
-                                    </a>
-                                );
-                            }
-                            return sub;
-                        });
-                    })}
-                </div>
-            );
-        });
+        return text.replace(/^"|"$/g, '').split('\n').map((line, i) => (
+            <div key={i} style={{marginBottom:'4px'}}>
+                {line.split(/(\*\*.*?\*\*)/g).map((part, index) => 
+                    part.startsWith('**') && part.endsWith('**') ? 
+                    <strong key={index}>{part.slice(2, -2)}</strong> : part
+                )}
+            </div>
+        ));
     };
 
     return (
         <>
-            {/* Floating Button */}
-            <div className={`ai-fab ${isOpen ? 'open' : ''}`} onClick={toggleChat}>
-                {isOpen ? <i className="fas fa-times"></i> : <i className="fas fa-robot"></i>}
-            </div>
+            {/* Floating Launcher Button */}
+            {!isOpen && (
+                <div className="ai-fab" onClick={toggleChat}>
+                    <i className="fas fa-robot"></i>
+                </div>
+            )}
 
-            {/* Chat Window */}
+            {/* Main Chat Window */}
             {isOpen && (
                 <div className="ai-chat-window">
+                    
+                    {/* 1. HEADER */}
                     <div className="ai-header">
-                        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                            <div style={{background:'rgba(255,255,255,0.2)', padding:'6px', borderRadius:'50%'}}>
-                                <i className="fas fa-brain"></i>
-                            </div>
-                            <div>
-                                <h3 style={{margin:0, fontSize:'16px'}}>AcadeX Coach</h3>
-                                <span style={{fontSize:'10px', opacity:0.9, fontWeight:'400'}}>Powered by AI</span>
+                        <div className="header-info">
+                            <div className="bot-avatar"><i className="fas fa-brain"></i></div>
+                            <div className="bot-details">
+                                <h3>AcadeX AI</h3>
+                                <span className="bot-status">Online</span>
                             </div>
                         </div>
+                        {/* New Exit Button */}
+                        <button className="close-chat-btn" onClick={toggleChat}>
+                            <i className="fas fa-times"></i>
+                        </button>
                     </div>
 
-                    {/* ✅ QUICK ACTIONS BAR (Restored!) */}
-                    <div className="ai-quick-actions">
-                        <button onClick={() => handleQuickAction('notes')} disabled={loading} className="quick-btn">
-                            📝 Notes
-                        </button>
-                        <button onClick={() => handleQuickAction('mcqs')} disabled={loading} className="quick-btn">
-                            🧠 Quiz
-                        </button>
-                    </div>
-                    
-                    {/* Messages Area */}
-                    <div className="ai-messages">
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`message-bubble ${msg.sender}`}>
-                                {renderMessage(msg.text)}
+                    {/* 2. FLOATING ACTION BUTTONS (Quiz/Notes) */}
+                    {!quizMode && (
+                        <div className="floating-options">
+                            <button className="float-pill quiz-btn" onClick={() => handleActionClick('quiz')}>
+                                <i className="fas fa-pencil-alt"></i> Quiz
+                            </button>
+                            <button className="float-pill notes-btn" onClick={() => handleActionClick('notes')}>
+                                <i className="fas fa-book-open"></i> Notes
+                            </button>
+                        </div>
+                    )}
+
+                    {/* 3. MESSAGES AREA */}
+                    <div className="ai-body">
+                        {!quizMode ? (
+                            <div className="messages-list">
+                                {messages.map((msg, idx) => (
+                                    <div key={idx} className={`message-row ${msg.sender}`}>
+                                        <div className="message-bubble">
+                                            {renderMessage(msg.text)}
+                                        </div>
+                                    </div>
+                                ))}
+                                {loading && (
+                                    <div className="message-row bot">
+                                        <div className="message-bubble">
+                                            <i className="fas fa-circle-notch fa-spin"></i> Thinking...
+                                        </div>
+                                    </div>
+                                )}
+                                <div ref={messagesEndRef} />
                             </div>
-                        ))}
-                        {loading && (
-                            <div className="message-bubble bot">
-                                <span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span>
+                        ) : (
+                            <div className="quiz-ui">
+                                <div className="quiz-header">
+                                    <span>Question {currentQuestionIndex + 1}/{activeQuiz.questions.length}</span>
+                                    <button onClick={exitQuiz} className="quiz-exit-btn">Exit</button>
+                                </div>
+                                {!quizFinished ? (
+                                    <>
+                                        <div className="quiz-question">
+                                            {activeQuiz.questions[currentQuestionIndex].question}
+                                        </div>
+                                        <div className="quiz-options">
+                                            {activeQuiz.questions[currentQuestionIndex].options.map((opt, i) => {
+                                                const isSelected = selectedOption === i;
+                                                const correctIndex = activeQuiz.questions[currentQuestionIndex].correctIndex;
+                                                let style = {};
+                                                
+                                                if (selectedOption !== null) {
+                                                    if (i === correctIndex) style = { background: '#dcfce7', borderColor: '#22c55e', color: '#14532d' };
+                                                    else if (isSelected) style = { background: '#fee2e2', borderColor: '#ef4444', color: '#7f1d1d' };
+                                                }
+                                                return (
+                                                    <button key={i} className={`quiz-opt ${isSelected ? 'selected' : ''}`} 
+                                                        style={style}
+                                                        onClick={() => handleOptionSelect(i, correctIndex)}
+                                                        disabled={selectedOption !== null}>
+                                                        {opt}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                        {showExplanation && (
+                                            <button className="quiz-footer-btn" onClick={nextQuestion}>
+                                                Next Question <i className="fas fa-arrow-right"></i>
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div style={{textAlign:'center', marginTop: 'auto', marginBottom: 'auto'}}>
+                                        <h3>🎉 Quiz Completed!</h3>
+                                        <div style={{fontSize: '40px', margin: '20px 0'}}>🏆</div>
+                                        <p style={{fontSize: '18px', color: '#64748b'}}>Your Score: <strong>{score} / {activeQuiz.questions.length}</strong></p>
+                                        <button className="quiz-footer-btn" onClick={exitQuiz}>Back to Chat</button>
+                                    </div>
+                                )}
                             </div>
                         )}
-                        <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Input Area */}
-                    <div className="ai-input-area">
-                        <input 
-                            type="text" 
-                            placeholder="Ask for help..." 
-                            value={input} 
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                            disabled={loading}
-                        />
-                        <button onClick={handleSend} disabled={loading}>
-                            <i className="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
+                    {/* 4. INPUT AREA */}
+                    {!quizMode && (
+                        <div className="ai-input-area">
+                            <div className="input-box">
+                                <input 
+                                    type="text" 
+                                    placeholder="Type a topic..." 
+                                    value={input} 
+                                    onChange={e => setInput(e.target.value)}
+                                    onKeyPress={e => e.key === 'Enter' && handleSend()}
+                                />
+                            </div>
+                            <button 
+                                className={`send-btn ${input.trim() ? 'active' : ''}`} 
+                                onClick={handleSend} 
+                                disabled={!input.trim()}
+                            >
+                                <i className="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </>

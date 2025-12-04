@@ -136,7 +136,7 @@ export default function AddStudent({ instituteId, instituteName }) {
                     </div>
 
                     <div className="input-group"><label>Email</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required /></div>
-                    <div className="input-group"><label>Temp Password</label><input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required /></div>
+                    <div className="input-group"><label>Password</label><input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required /></div>
                     
                     <button className="btn-primary" disabled={loading}>{loading ? 'Adding...' : 'Add Student'}</button>
                 </form>

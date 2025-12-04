@@ -3,11 +3,10 @@ import { signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc, orderBy, limit } from 'firebase/firestore';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import toast, { Toaster } from 'react-hot-toast';
 import logo from "../assets/logo.png";
 import './Dashboard.css';
-
 
 // Component Imports
 import FreePeriodTasks from './FreePeriodTasks';
@@ -15,6 +14,7 @@ import Profile from './Profile';
 import AiChatbot from './AiChatbot';
 import CareerRoadmap from './CareerRoadmap';
 import Leaderboard from './Leaderboard';
+import FreePeriodQuiz from '../components/FreePeriodQuiz';
 
 const BACKEND_URL = "https://acadex-backend-n2wh.onrender.com";
 
@@ -108,52 +108,29 @@ const NoticesView = ({ notices }) => {
     return (
         <div className="content-section">
             <h2 className="content-title">Notice Board</h2>
-            <p className="content-subtitle">Latest updates from your teachers & HOD.</p>
-            
             <div className="cards-grid" style={{gridTemplateColumns:'1fr'}}>
                 {notices.length > 0 ? notices.map(n => (
-                    <div key={n.id} className="card" style={{borderLeft:'5px solid #2563eb', padding:'25px', position:'relative', overflow:'hidden'}}>
-                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
-                            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                                <div className="icon-box-modern" style={{background:'#eff6ff', color:'#2563eb', width:'36px', height:'36px', fontSize:'16px'}}>
-                                    <i className="fas fa-bullhorn"></i>
-                                </div>
-                                <h3 style={{margin:0, fontSize:'18px', color:'#1e3a8a'}}>{n.title}</h3>
-                            </div>
-                            <span style={{fontSize:'11px', fontWeight:'600', color:'#94a3b8', background:'#f1f5f9', padding:'4px 8px', borderRadius:'6px'}}>
-                                {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : 'Just now'}
-                            </span>
+                    <div key={n.id} className="card" style={{borderLeft:'5px solid #2563eb', padding:'25px'}}>
+                        <div style={{display:'flex', justifyContent:'space-between', marginBottom:'10px'}}>
+                            <h3 style={{margin:0, fontSize:'18px', color:'#1e3a8a'}}>{n.title}</h3>
+                            <span style={{fontSize:'11px', fontWeight:'600', color:'#94a3b8'}}>{n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : 'Just now'}</span>
                         </div>
-                        <p style={{color:'#334155', fontSize:'14px', lineHeight:'1.6', marginBottom:'15px'}}>{n.message}</p>
-                        <div style={{borderTop:'1px solid #f1f5f9', paddingTop:'10px', fontSize:'11px', color:'#64748b', display:'flex', justifyContent:'space-between'}}>
-                            <span><strong>Posted by:</strong> {n.teacherName}</span>
-                            <div style={{display:'flex', gap:'10px'}}>
-                                <span className="status-badge-pill" style={{fontSize:'10px'}}>{n.targetYear === 'All' ? 'Everyone' : n.targetYear}</span>
-                                <span>{n.department}</span>
-                            </div>
-                        </div>
+                        <p style={{color:'#334155', fontSize:'14px', marginBottom:'15px'}}>{n.message}</p>
                     </div>
-                )) : (
-                    <div className="card" style={{textAlign:'center', padding:'40px'}}>
-                        <div style={{fontSize:'40px', marginBottom:'10px'}}>📭</div>
-                        <p style={{color:'#64748b'}}>No announcements for your class yet.</p>
-                    </div>
-                )}
+                )) : <div className="card" style={{textAlign:'center', padding:'40px'}}>📭 No announcements.</div>}
             </div>
         </div>
     );
 };
 
 // --- COMPONENT: Smart Schedule Card ---
-const SmartScheduleCard = ({ user, onOpenAI }) => {
+const SmartScheduleCard = ({ user }) => {
     const [currentSlot, setCurrentSlot] = useState(null);
-    const [statusMessage, setStatusMessage] = useState("Loading schedule...");
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchSchedule = async () => {
-            if (!user?.department || !user?.year) { setStatusMessage("Update profile to see schedule."); setLoading(false); return; }
-
+            if (!user?.department || !user?.year) { setLoading(false); return; }
             let sem = user.semester || (user.year === 'FE' ? '1' : user.year === 'SE' ? '3' : user.year === 'TE' ? '5' : '7');
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const today = days[new Date().getDay()];
@@ -171,95 +148,55 @@ const SmartScheduleCard = ({ user, onOpenAI }) => {
                         return now >= start && now < end;
                     });
                     setCurrentSlot(activeSlot || { type: 'Free', subject: 'No active class right now.' });
-                } else { setCurrentSlot(null); setStatusMessage(`No timetable for ${today}.`); }
-            } catch (error) { console.error(error); setStatusMessage("Error loading schedule."); } finally { setLoading(false); }
+                } else { setCurrentSlot(null); }
+            } catch (error) { console.error(error); } finally { setLoading(false); }
         };
         fetchSchedule();
         const interval = setInterval(fetchSchedule, 60000); 
         return () => clearInterval(interval);
     }, [user]);
 
-    useEffect(() => {
-        if (currentSlot?.type === 'Free') {
-            toast("🎉 It's a Free Period! Check your Tasks.", { icon: '☕', duration: 6000, style: { border: '1px solid #10b981', background: '#ecfdf5', color: '#064e3b' } });
-        }
-    }, [currentSlot?.type]);
-
-    if (loading) return <div className="card" style={{padding:'20px', textAlign:'center', color:'#64748b'}}>{statusMessage}</div>;
-    if (!currentSlot) return <div className="card" style={{padding:'20px', textAlign:'center'}}><h3 style={{margin:0, color:'#64748b'}}>No Schedule</h3><p style={{margin:'5px 0 0 0', fontSize:'13px', color:'#94a3b8'}}>{statusMessage}</p></div>;
-
     const isFree = currentSlot?.type === 'Free' || currentSlot?.type === 'Break' || currentSlot?.type === 'Holiday';
+    
+    if (loading) return <div className="card" style={{padding:'20px', textAlign:'center'}}>Loading...</div>;
+
     return (
-        <div className="card" style={{borderLeft: isFree ? '5px solid #10b981' : '5px solid #3b82f6', background: isFree ? 'linear-gradient(to right, #ecfdf5, white)' : 'white'}}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                <div>
-                    <h4 style={{margin:0, color: isFree ? '#059669' : '#2563eb', fontSize:'12px', textTransform:'uppercase', fontWeight:'bold'}}>{isFree ? "🟢 RIGHT NOW" : "🔴 LIVE CLASS"}</h4>
-                    <h2 style={{margin:'5px 0 0 0', fontSize:'20px', color: '#1e293b', fontWeight:'700'}}>{currentSlot?.subject || "Free Period"}</h2>
-                    <p style={{margin:'4px 0 0 0', fontSize:'13px', color:'#64748b'}}>{currentSlot?.startTime ? `${currentSlot.startTime} - ${currentSlot.endTime}` : "Enjoy your free time!"}</p>
+        <>
+            <div className="card" style={{borderLeft: isFree ? '5px solid #10b981' : '5px solid #3b82f6', background: isFree ? 'linear-gradient(to right, #ecfdf5, white)' : 'white'}}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                    <div>
+                        <h4 style={{margin:0, color: isFree ? '#059669' : '#2563eb', fontSize:'12px', fontWeight:'bold'}}>{isFree ? "🟢 RIGHT NOW" : "🔴 LIVE CLASS"}</h4>
+                        <h2 style={{margin:'5px 0 0 0', fontSize:'20px', color: '#1e293b', fontWeight:'700'}}>{currentSlot?.subject || "Free Period"}</h2>
+                        <p style={{margin:'4px 0 0 0', fontSize:'13px', color:'#64748b'}}>{currentSlot?.startTime ? `${currentSlot.startTime} - ${currentSlot.endTime}` : "Enjoy your free time!"}</p>
+                    </div>
                 </div>
-                {isFree && <button onClick={onOpenAI} className="btn-primary" style={{width:'auto', padding:'10px 16px', fontSize:'13px', marginTop: 0}}><i className="fas fa-robot" style={{marginRight:'8px'}}></i> Get Task</button>}
             </div>
-        </div>
+            {isFree && <FreePeriodQuiz user={user} isFree={isFree} />}
+        </>
     );
 };
 
 // --- DASHBOARD HOME ---
-const DashboardHome = ({ user, onOpenAI }) => {
-    const [liveSession, setLiveSession] = useState(null);
-    const [showScanner, setShowScanner] = useState(false);
-    const [recentAttendance, setRecentAttendance] = useState([]);
-
-    // 1. Fetch Active Session
+const DashboardHome = ({ user, setLiveSession, setRecentAttendance, liveSession, recentAttendance, setShowScanner }) => {
     useEffect(() => {
         if (!user?.instituteId) return;
         const q = query(collection(db, "live_sessions"), where("isActive", "==", true), where("instituteId", "==", user.instituteId));
         const unsubscribe = onSnapshot(q, (snapshot) => setLiveSession(!snapshot.empty ? { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } : null));
         return () => unsubscribe();
-    }, [user]);
+    }, [user, setLiveSession]);
 
-    // 2. Fetch Recent Attendance
     useEffect(() => {
         if (!auth.currentUser) return;
         const q = query(collection(db, "attendance"), where("studentId", "==", auth.currentUser.uid), orderBy("timestamp", "desc"), limit(3));
         const unsubscribe = onSnapshot(q, (snapshot) => setRecentAttendance(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: doc.data().timestamp?.toDate().toLocaleDateString() }))));
         return () => unsubscribe();
-    }, [user]);
-
-    // Scanner Logic
-    const handleScan = (sessionId) => {
-        toast.loading("Verifying...");
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            try {
-                const token = await auth.currentUser.getIdToken();
-                const response = await fetch(`${BACKEND_URL}/markAttendance`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ sessionId, studentLocation: { latitude: position.coords.latitude, longitude: position.coords.longitude } })
-                });
-                const data = await response.json();
-                toast.dismiss();
-                if (response.ok) toast.success(data.message); else toast.error(data.error);
-                setShowScanner(false);
-            } catch (error) { toast.error(error.message); }
-        });
-    };
-
-    useEffect(() => {
-        let scanner;
-        if (showScanner) {
-            scanner = new Html5QrcodeScanner("qr-reader", { fps: 5, qrbox: { width: 250, height: 250 } });
-            scanner.render((text) => { scanner.clear(); handleScan(text); }, console.warn);
-        }
-        return () => scanner?.clear();
-    }, [showScanner]);
+    }, [setRecentAttendance]);
 
     return (
         <div className="content-section">
             <h2 className="content-title">Welcome, {user.firstName}!</h2>
-
-            {/* Notice Card Removed */}
-
             <div className="cards-grid">
-                <SmartScheduleCard user={user} onOpenAI={onOpenAI} />
+                <SmartScheduleCard user={user} />
                 
                 <div className="card" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '15px' }}>
@@ -275,8 +212,6 @@ const DashboardHome = ({ user, onOpenAI }) => {
                     ) : <p style={{textAlign:'center', color:'#64748b'}}>No active sessions.</p>}
                 </div>
                 
-                {showScanner && <div className="card scanner-card"><div id="qr-reader"></div><button className="btn-secondary" onClick={() => setShowScanner(false)}>Cancel</button></div>}
-
                 <div className="card">
                     <h3>Recent History</h3>
                     <div className="recent-attendance-list">
@@ -293,41 +228,72 @@ const DashboardHome = ({ user, onOpenAI }) => {
     );
 };
 
-// ------------------------------
-//  MAIN COMPONENT
-// ------------------------------
+// --- 📱 MOBILE FOOTER COMPONENT ---
+const MobileFooter = ({ activePage, setActivePage, badgeCount, liveSession, onScan, onChat }) => {
+    return (
+        <div className="mobile-footer">
+            <button className={`nav-item ${activePage === 'dashboard' ? 'active' : ''}`} onClick={() => setActivePage('dashboard')}>
+                <i className="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            
+            <button className={`nav-item ${activePage === 'notices' ? 'active' : ''}`} onClick={() => setActivePage('notices')} style={{position:'relative'}}>
+                <i className="fas fa-bullhorn"></i>
+                <span>Updates</span>
+                {badgeCount > 0 && <span className="nav-badge" style={{position:'absolute', top:'-5px', right:'15px', padding:'2px 6px'}}>{badgeCount}</span>}
+            </button>
+
+            <div className="scan-btn-wrapper">
+                <button className="scan-btn" onClick={onScan}>
+                    <i className="fas fa-qrcode"></i>
+                    {liveSession && <div className="scan-badge">1</div>}
+                </button>
+            </div>
+
+            <button className={`nav-item ${activePage === 'leaderboard' ? 'active' : ''}`} onClick={() => setActivePage('leaderboard')}>
+                <i className="fas fa-trophy"></i>
+                <span>Rank</span>
+            </button>
+
+            <button className={`nav-item ${activePage === 'profile' ? 'active' : ''}`} onClick={() => setActivePage('profile')}>
+                <i className="fas fa-user"></i>
+                <span>Profile</span>
+            </button>
+        </div>
+    );
+};
+
+// --- MAIN COMPONENT ---
 export default function StudentDashboard() {
   const [activePage, setActivePage] = useState('dashboard');
   const [user, setUser] = useState(null);
-  
-  // ✅ Shared State
   const [notices, setNotices] = useState([]); 
-  // Read count stored in LocalStorage to persist across refreshes (Permanent removal effect)
   const [readCount, setReadCount] = useState(() => {
       const saved = localStorage.getItem('seenNoticesCount');
       return saved ? parseInt(saved) : 0;
   });
 
-  const isFirstLoad = useRef(true); 
-  
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [liveSession, setLiveSession] = useState(null);
+  const [recentAttendance, setRecentAttendance] = useState([]);
+  
+  const scannerRef = useRef(null); 
+
   const navigate = useNavigate();
 
-  // 1. Real-time User Listener
   useEffect(() => {
     if (!auth.currentUser) return;
     const unsub = onSnapshot(doc(db, "users", auth.currentUser.uid), (doc) => setUser(doc.data()));
     return () => unsub();
   }, []);
 
-  // 2. ✅ Global Notice Listener (Badge Logic + Login Toast + Realtime Toast)
   useEffect(() => {
       if (!user?.instituteId) return;
       const q = query(collection(db, 'announcements'), where('instituteId', '==', user.instituteId));
-      
+      let isInitialMount = true; 
       const unsub = onSnapshot(q, (snapshot) => {
-          // A. Filter & Sort Data
           const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
           const relevant = all.filter(n => {
                const isDeptMatch = n.department === user.department || n.department === 'General';
@@ -335,46 +301,25 @@ export default function StudentDashboard() {
                return isDeptMatch && isYearMatch;
           });
           relevant.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-          
           setNotices(relevant);
-
-          // B. Handle Login Popups (First Load Only)
-          if (isFirstLoad.current) {
+          if (isInitialMount) {
               const unread = Math.max(0, relevant.length - readCount);
-              if (unread > 0) {
-                  // Show summary toast on login
-                  toast(`You have ${unread} unread notices!`, {
-                      icon: '📬',
-                      style: { borderRadius: '10px', background: '#333', color: '#fff', border: '1px solid #555' },
-                      duration: 5000
-                  });
-              }
-          } 
-          // C. Handle Real-time Popups (New announcements while online)
-          else {
+              if (unread > 0) toast(`You have ${unread} unread notices!`, { icon: '📬', duration: 4000 });
+              isInitialMount = false;
+          } else {
               snapshot.docChanges().forEach((change) => {
                   if (change.type === 'added') {
                       const n = change.doc.data();
                       const isDeptMatch = n.department === user.department || n.department === 'General';
                       const isYearMatch = n.targetYear === 'All' || n.targetYear === user.year;
-
-                      if (isDeptMatch && isYearMatch) {
-                          toast(`📢 New: ${n.title}`, {
-                            icon: '🔔',
-                            style: { borderRadius: '10px', background: '#333', color: '#fff', border: '1px solid #555' },
-                            duration: 5000
-                          });
-                      }
+                      if (isDeptMatch && isYearMatch) toast(`📢 New: ${n.title}`, { icon: '🔔', duration: 5000 });
                   }
               });
           }
-
-          isFirstLoad.current = false;
       });
       return () => unsub();
-  }, [user, readCount]);
+  }, [user?.instituteId, user?.department, user?.year, readCount]); 
 
-  // ✅ 3. Clear Badge Permanently (Update Read Count)
   useEffect(() => {
       if (activePage === 'notices' && notices.length > readCount) {
           const newCount = notices.length;
@@ -383,22 +328,68 @@ export default function StudentDashboard() {
       }
   }, [activePage, notices, readCount]);
 
-  // Badge Calculation: Total Relevant - Seen Count
   const badgeCount = Math.max(0, notices.length - readCount);
-
   const handleLogout = async () => { await signOut(auth); navigate('/'); };
+
+  // --- ✅ NEW SCANNER LOGIC ---
+  const onScanSuccess = (decodedText) => {
+        if (scannerRef.current) {
+            scannerRef.current.pause(true); 
+        }
+        setShowScanner(false);
+        toast.loading("Verifying...");
+        
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            try {
+                const token = await auth.currentUser.getIdToken();
+                const response = await fetch(`${BACKEND_URL}/markAttendance`, {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ sessionId: decodedText, studentLocation: { latitude: position.coords.latitude, longitude: position.coords.longitude } })
+                });
+                const data = await response.json();
+                toast.dismiss();
+                if (response.ok) toast.success(data.message); else toast.error(data.error);
+            } catch (error) { 
+                toast.error(error.message); 
+                toast.dismiss();
+            }
+        }, (err) => {
+            toast.error("Location permission denied.");
+            setShowScanner(false);
+        });
+  };
+
+  useEffect(() => {
+    if (showScanner) {
+        const html5QrCode = new Html5Qrcode("reader");
+        scannerRef.current = html5QrCode;
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+        .catch(err => {
+            console.error(err);
+            toast.error("Camera failed to start.");
+            setShowScanner(false);
+        });
+        return () => {
+            if (html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => html5QrCode.clear()).catch(console.error);
+            }
+        };
+    }
+  }, [showScanner]);
 
   const renderContent = () => {
     if (!user) return <div style={{ textAlign: 'center', paddingTop: 50 }}>Loading...</div>;
     switch (activePage) {
-      case 'dashboard': return <DashboardHome user={user} onOpenAI={() => setIsChatOpen(true)} />;
+      case 'dashboard': return <DashboardHome user={user} onOpenAI={() => setIsChatOpen(true)} liveSession={liveSession} setLiveSession={setLiveSession} recentAttendance={recentAttendance} setRecentAttendance={setRecentAttendance} setShowScanner={setShowScanner} />;
       case 'tasks': return <FreePeriodTasks user={user} />;
       case 'profile': return <Profile user={user} />;
       case 'plans': return <CareerRoadmap user={user} />; 
       case 'leaderboard': return <Leaderboard user={user} />;
       case 'leave': return <LeaveRequestForm user={user} />;
       case 'notices': return <NoticesView notices={notices} />;
-      default: return <DashboardHome user={user} onOpenAI={() => setIsChatOpen(true)} />;
+      default: return <DashboardHome user={user} onOpenAI={() => setIsChatOpen(true)} liveSession={liveSession} setLiveSession={setLiveSession} recentAttendance={recentAttendance} setRecentAttendance={setRecentAttendance} setShowScanner={setShowScanner} />;
     }
   };
 
@@ -407,37 +398,23 @@ export default function StudentDashboard() {
         <div style={{display:'flex', alignItems:'center', width:'100%'}}>
             <i className={`fas ${iconClass}`} style={{ width: '24px', textAlign: 'center' }}></i>
             <span>{label}</span>
-            {/* ✅ Badge Logic */}
-            {count > 0 && <span className="nav-badge" style={{
-                background: '#ef4444', 
-                color: 'white', 
-                fontSize: '10px', 
-                padding: '2px 8px', 
-                borderRadius: '12px', 
-                marginLeft: 'auto',
-                fontWeight: 'bold',
-                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)'
-            }}>{count}</span>}
+            {count > 0 && <span className="nav-badge" style={{ background: '#ef4444', color: 'white', fontSize: '10px', padding: '2px 8px', borderRadius: '12px', marginLeft: 'auto', fontWeight: 'bold' }}>{count}</span>}
         </div>
     </li>
   );
 
   return (
     <div className="dashboard-container">
-      <Toaster position="top-center" />
+      <Toaster position="bottom-center" toastOptions={{ duration: 2000, style: { background: '#1e293b', color: '#fff', marginBottom: '10px', zIndex: 9999 }}} />
       {isMobileNavOpen && <div className="nav-overlay" onClick={() => setIsMobileNavOpen(false)} />}
       
-      <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`}>
+      <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`} style={{ zIndex: isMobileNavOpen ? 200 : 50 }}>
         <div className="logo-container"><img src={logo} alt="AcadeX" className="sidebar-logo"/><span className="logo-text">Acadex</span></div>
         {user && (
             <div className="teacher-info" onClick={() => { setActivePage('profile'); setIsMobileNavOpen(false); }} style={{ cursor: 'pointer' }}>
                 <h4>{user.firstName} {user.lastName}</h4>
                 <p>Roll No: {user.rollNo}</p>
-                <p style={{fontSize:'14px', color:'#059669', fontWeight:'700', margin:'4px 0'}}>
-                    {user.xp || 0} XP 
-                    {user.badges?.map(b => <span key={b} style={{marginLeft:'4px'}}>{b === 'novice' ? '🌱' : '🔥'}</span>)}
-                </p>
-                {user.year && <p style={{fontSize:'13px', color:'#2563eb', fontWeight:'600', margin:'2px 0'}}>Class: {user.year}</p>}
+                <p style={{fontSize:'14px', color:'#059669', fontWeight:'700', margin:'4px 0'}}>{user.xp || 0} XP {user.badges?.map(b => <span key={b} style={{marginLeft:'4px'}}>{b === 'novice' ? '🌱' : '🔥'}</span>)}</p>
             </div>
         )}
         <ul className="menu">
@@ -458,9 +435,36 @@ export default function StudentDashboard() {
             <div className="mobile-brand"><img src={logo} alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
             <div style={{width:'40px'}}></div>
         </header>
+        
         {renderContent()}
-        {user && <AiChatbot user={user} isOpenProp={isChatOpen} onClose={() => setIsChatOpen(false)} />}
+
+        {/* ✅ SCANNER MODAL */}
+        {showScanner && (
+            <div className="card scanner-card" style={{
+                position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
+                background: 'rgba(0,0,0,0.9)', zIndex: 10000, 
+                display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
+            }}>
+                <div id="reader" style={{width: '300px', height: '300px', background: 'black'}}></div>
+                <p style={{color:'white', marginTop:'20px'}}>Scanning...</p>
+                <button className="btn-secondary" onClick={() => setShowScanner(false)} style={{marginTop:'20px', zIndex:10001}}>Cancel</button>
+            </div>
+        )}
+
+        <MobileFooter 
+            activePage={activePage} 
+            setActivePage={setActivePage} 
+            badgeCount={badgeCount} 
+            liveSession={liveSession} 
+            onScan={() => setShowScanner(true)}
+            onChat={() => setIsChatOpen(true)}
+        />
       </main>
+
+      {/* 🚀 FIXED: Chatbot is now OUTSIDE <main> so it floats on TOP of everything */}
+      {user && (
+          <AiChatbot user={user} isOpenProp={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      )}
     </div>
   );
 }
