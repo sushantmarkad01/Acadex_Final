@@ -1,0 +1,121 @@
+/* src/components/TwoFactorVerifyModal.css */
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6); /* Dim background */
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.tfa-verify-card {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 30px;
+  border-radius: 24px;
+  width: 90%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tfa-verify-icon {
+  font-size: 45px;
+  margin-bottom: 15px;
+  display: inline-block;
+  animation: pulse 2s infinite;
+}
+
+.tfa-verify-card h2 {
+  margin: 0 0 8px 0;
+  color: #1e293b;
+  font-size: 22px;
+}
+
+.tfa-verify-card p {
+  margin: 0 0 20px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* 6-Digit Input */
+.verify-input {
+  width: 100%;
+  padding: 15px;
+  font-size: 26px;
+  text-align: center;
+  letter-spacing: 10px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  outline: none;
+  font-family: monospace;
+  font-weight: 700;
+  color: #334155;
+  transition: all 0.2s;
+  margin-bottom: 20px;
+}
+
+.verify-input:focus {
+  border-color: #3b82f6;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Buttons */
+.verify-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+.btn-confirm {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  transition: transform 0.1s;
+}
+
+.btn-confirm:hover {
+  transform: translateY(-2px);
+}
+
+.btn-confirm:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }

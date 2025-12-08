@@ -3,6 +3,7 @@ import { auth, db } from '../firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import './Dashboard.css';
+import TwoFactorSetup from '../components/TwoFactorSetup';
 
 // ✅ Predefined Interest Categories for Deep Data (Judge's Requirement)
 const INTEREST_DOMAINS = {
@@ -16,7 +17,7 @@ const INTEREST_DOMAINS = {
 export default function Profile({ user }) {
     const [isEditing, setIsEditing] = useState(false);
     const [profileData, setProfileData] = useState(user || null);
-    
+
     // Form State including new Deep Data fields
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', phone: '', subject: '', email: '',
@@ -24,7 +25,7 @@ export default function Profile({ user }) {
         // ✅ New Structured Fields
         domain: '',
         subDomain: '',
-        specificSkills: '' 
+        specificSkills: ''
     });
 
     useEffect(() => {
@@ -47,7 +48,7 @@ export default function Profile({ user }) {
                         // ✅ Load existing deep data
                         domain: data.domain || '',
                         subDomain: data.subDomain || '',
-                        specificSkills: data.specificSkills || '' 
+                        specificSkills: data.specificSkills || ''
                     });
                 }
             }
@@ -59,7 +60,7 @@ export default function Profile({ user }) {
         const toastId = toast.loading("Updating Profile...");
         try {
             const userRef = doc(db, 'users', auth.currentUser.uid);
-            
+
             const updates = {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
@@ -71,15 +72,15 @@ export default function Profile({ user }) {
 
             if (user.role === 'student') {
                 updates.careerGoal = formData.careerGoal;
-                updates['extras.year'] = formData.year; 
-                
+                updates['extras.year'] = formData.year;
+
                 // ✅ Save Deep Data for AI Context
                 updates.domain = formData.domain;
                 updates.subDomain = formData.subDomain;
                 updates.specificSkills = formData.specificSkills;
-                
+
                 // Save legacy interests string for backward compatibility with simple filters
-                updates.interests = `${formData.domain}, ${formData.subDomain}, ${formData.specificSkills}`; 
+                updates.interests = `${formData.domain}, ${formData.subDomain}, ${formData.specificSkills}`;
             }
 
             await updateDoc(userRef, updates);
@@ -96,14 +97,14 @@ export default function Profile({ user }) {
     return (
         <div className="content-section">
             <h2 className="content-title">My Profile</h2>
-            
+
             {/* ✅ INCENTIVE BANNER (Why should I fill this?) */}
             {user.role === 'student' && (
-                <div style={{background: 'linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%)', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #bfdbfe', display:'flex', alignItems:'center', gap:'15px'}}>
-                    <div style={{fontSize:'24px'}}>🎓</div>
+                <div style={{ background: 'linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%)', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ fontSize: '24px' }}>🎓</div>
                     <div>
-                        <h4 style={{margin:0, color:'#1e40af'}}>Boost Your Internal Marks!</h4>
-                        <p style={{margin:0, fontSize:'13px', color:'#1e3a8a'}}>
+                        <h4 style={{ margin: 0, color: '#1e40af' }}>Boost Your Internal Marks!</h4>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#1e3a8a' }}>
                             Complete your <strong>Career Interest Profile</strong> below. The AI uses this to assign tasks that count towards your <strong>Extra Curricular Academic Credits</strong>.
                         </p>
                     </div>
@@ -112,10 +113,10 @@ export default function Profile({ user }) {
 
             {/* Header Card */}
             <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '25px', background: 'linear-gradient(135deg, #fff 0%, #f8fafc 100%)' }}>
-                <div style={{ 
-                    width: '80px', height: '80px', borderRadius: '50%', 
-                    background: '#eff6ff', color: '#2563eb', fontSize: '30px', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' 
+                <div style={{
+                    width: '80px', height: '80px', borderRadius: '50%',
+                    background: '#eff6ff', color: '#2563eb', fontSize: '30px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
                 }}>
                     {profileData.firstName?.[0]}{profileData.lastName?.[0]}
                 </div>
@@ -124,13 +125,13 @@ export default function Profile({ user }) {
                     <p style={{ margin: '5px 0 0 0', color: '#64748b' }}>
                         {profileData.role === 'hod' ? 'HOD' : profileData.role === 'teacher' ? 'Teacher' : 'Student'} • {profileData.department}
                     </p>
-                    
+
                     <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
                         {user.role === 'student' && (
                             <>
                                 <span className="status-badge status-approved">Roll: {profileData.rollNo}</span>
                                 {/* ✅ Showing Credits instead of just "XP" */}
-                                <span className="status-badge" style={{background:'#e0f2fe', color:'#0284c7'}}>{profileData.xp || 0} Credits Earned</span>
+                                <span className="status-badge" style={{ background: '#e0f2fe', color: '#0284c7' }}>{profileData.xp || 0} Credits Earned</span>
                             </>
                         )}
                         {user.role === 'teacher' && (
@@ -138,8 +139,8 @@ export default function Profile({ user }) {
                         )}
                     </div>
                 </div>
-                
-                <button 
+
+                <button
                     className={isEditing ? "btn-primary" : "btn-secondary"}
                     style={{ width: 'auto', padding: '8px 16px', marginLeft: 'auto' }}
                     onClick={() => isEditing ? handleSave() : setIsEditing(true)}
@@ -148,29 +149,29 @@ export default function Profile({ user }) {
                 </button>
             </div>
 
-            <div className="cards-grid" style={{alignItems: 'start'}}> 
-                
+            <div className="cards-grid" style={{ alignItems: 'start' }}>
+
                 {/* Personal Details Column */}
                 <div className="card">
                     <h3>Personal Details</h3>
-                    <div className="input-group"><label>First Name</label><input type="text" disabled={!isEditing} value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} /></div>
-                    <div className="input-group"><label>Last Name</label><input type="text" disabled={!isEditing} value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} /></div>
-                    <div className="input-group"><label>Email</label><input type="email" disabled={!isEditing} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></div>
-                    <div className="input-group"><label>Phone Number</label><input type="tel" disabled={!isEditing} placeholder="+91..." value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
+                    <div className="input-group"><label>First Name</label><input type="text" disabled={!isEditing} value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} /></div>
+                    <div className="input-group"><label>Last Name</label><input type="text" disabled={!isEditing} value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} /></div>
+                    <div className="input-group"><label>Email</label><input type="email" disabled={!isEditing} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} /></div>
+                    <div className="input-group"><label>Phone Number</label><input type="tel" disabled={!isEditing} placeholder="+91..." value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} /></div>
 
                     {user.role === 'teacher' && (
                         <>
-                            <div className="input-group"><label>Subject Specification</label><input type="text" disabled={!isEditing} value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} /></div>
-                            <div className="input-group"><label>Qualification</label><input type="text" disabled={!isEditing} placeholder="e.g. M.Tech, PhD" value={formData.qualification} onChange={e => setFormData({...formData, qualification: e.target.value})} /></div>
+                            <div className="input-group"><label>Subject Specification</label><input type="text" disabled={!isEditing} value={formData.subject} onChange={e => setFormData({ ...formData, subject: e.target.value })} /></div>
+                            <div className="input-group"><label>Qualification</label><input type="text" disabled={!isEditing} placeholder="e.g. M.Tech, PhD" value={formData.qualification} onChange={e => setFormData({ ...formData, qualification: e.target.value })} /></div>
                         </>
                     )}
-                    
+
                     {user.role === 'student' && (
                         <>
-                            <div className="input-group"><label>Roll Number</label><input type="text" disabled value={user.rollNo} style={{backgroundColor: '#f9fafb', color:'#6b7280'}} /></div>
+                            <div className="input-group"><label>Roll Number</label><input type="text" disabled value={user.rollNo} style={{ backgroundColor: '#f9fafb', color: '#6b7280' }} /></div>
                             <div className="input-group">
                                 <label>Year</label>
-                                <select disabled={!isEditing} value={formData.year} onChange={e => setFormData({...formData, year: e.target.value})} style={{width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: isEditing ? 'white' : '#f9fafb'}}>
+                                <select disabled={!isEditing} value={formData.year} onChange={e => setFormData({ ...formData, year: e.target.value })} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: isEditing ? 'white' : '#f9fafb' }}>
                                     <option value="FE">FE (First Year)</option>
                                     <option value="SE">SE (Second Year)</option>
                                     <option value="TE">TE (Third Year)</option>
@@ -183,22 +184,22 @@ export default function Profile({ user }) {
 
                 {/* ✅ NEW: CAREER INTEREST PROFILE (The Solution to Judge's Question) */}
                 {user.role === 'student' && (
-                    <div className="card" style={{border: '2px solid #8b5cf6'}}>
-                        <h3 style={{color: '#7c3aed', display:'flex', alignItems:'center', gap:'10px'}}>
+                    <div className="card" style={{ border: '2px solid #8b5cf6' }}>
+                        <h3 style={{ color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <i className="fas fa-bullseye"></i> Career Focus Area
                         </h3>
-                        <p style={{fontSize:'13px', color:'#64748b', marginBottom:'20px'}}>
+                        <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '20px' }}>
                             Select your exact interests so <strong>Grow AI</strong> can generate relevant curriculum tasks for you.
                         </p>
 
                         {/* 1. Domain Selection */}
                         <div className="input-group">
                             <label>Primary Interest Domain</label>
-                            <select 
-                                disabled={!isEditing} 
-                                value={formData.domain} 
-                                onChange={e => setFormData({...formData, domain: e.target.value, subDomain: ''})} // Reset sub on change
-                                style={{width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: isEditing ? 'white' : '#f9fafb'}}
+                            <select
+                                disabled={!isEditing}
+                                value={formData.domain}
+                                onChange={e => setFormData({ ...formData, domain: e.target.value, subDomain: '' })} // Reset sub on change
+                                style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: isEditing ? 'white' : '#f9fafb' }}
                             >
                                 <option value="">-- Select Domain --</option>
                                 {Object.keys(INTEREST_DOMAINS).map(d => <option key={d} value={d}>{d}</option>)}
@@ -209,11 +210,11 @@ export default function Profile({ user }) {
                         {formData.domain && (
                             <div className="input-group">
                                 <label>Specialization</label>
-                                <select 
-                                    disabled={!isEditing} 
-                                    value={formData.subDomain} 
-                                    onChange={e => setFormData({...formData, subDomain: e.target.value})} 
-                                    style={{width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: isEditing ? 'white' : '#f9fafb'}}
+                                <select
+                                    disabled={!isEditing}
+                                    value={formData.subDomain}
+                                    onChange={e => setFormData({ ...formData, subDomain: e.target.value })}
+                                    style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: isEditing ? 'white' : '#f9fafb' }}
                                 >
                                     <option value="">-- Select Specialization --</option>
                                     {INTEREST_DOMAINS[formData.domain].map(sub => <option key={sub} value={sub}>{sub}</option>)}
@@ -224,30 +225,30 @@ export default function Profile({ user }) {
                         {/* 3. Specific Skills */}
                         <div className="input-group">
                             <label>Specific Technologies / Topics</label>
-                            <input 
-                                type="text" 
-                                disabled={!isEditing} 
-                                placeholder="e.g. React, Python, AutoCAD, Stock Market..." 
-                                value={formData.specificSkills} 
-                                onChange={e => setFormData({...formData, specificSkills: e.target.value})} 
-                                style={{backgroundColor: isEditing ? 'white' : '#f9fafb'}}
+                            <input
+                                type="text"
+                                disabled={!isEditing}
+                                placeholder="e.g. React, Python, AutoCAD, Stock Market..."
+                                value={formData.specificSkills}
+                                onChange={e => setFormData({ ...formData, specificSkills: e.target.value })}
+                                style={{ backgroundColor: isEditing ? 'white' : '#f9fafb' }}
                             />
-                            <small style={{color:'#64748b'}}>Used by AI to customize your challenges.</small>
+                            <small style={{ color: '#64748b' }}>Used by AI to customize your challenges.</small>
                         </div>
 
-                        <div className="input-group" style={{marginTop:'10px'}}>
+                        <div className="input-group" style={{ marginTop: '10px' }}>
                             <label>Ultimate Career Goal</label>
-                            <input type="text" disabled={!isEditing} placeholder="e.g. Google Software Engineer" value={formData.careerGoal} onChange={e => setFormData({...formData, careerGoal: e.target.value})} />
+                            <input type="text" disabled={!isEditing} placeholder="e.g. Google Software Engineer" value={formData.careerGoal} onChange={e => setFormData({ ...formData, careerGoal: e.target.value })} />
                         </div>
                     </div>
                 )}
-                
+
                 {/* Portfolio Section (Kept as is for students) */}
                 {user.role === 'student' && (
-                    <div className="card" style={{border: 'none', boxShadow: 'none', padding: 0, background: 'transparent'}}>
+                    <div className="card" style={{ border: 'none', boxShadow: 'none', padding: 0, background: 'transparent' }}>
                         <h3 style={{ fontSize: '18px', marginBottom: '15px', color: '#334155' }}>Professional Portfolio</h3>
-                        
-                        <div className="card" style={{marginBottom: '20px'}}>
+
+                        <div className="card" style={{ marginBottom: '20px' }}>
                             <h4 style={{ margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <i className="fas fa-tools" style={{ color: '#3b82f6' }}></i> Skills
                             </h4>
@@ -279,7 +280,7 @@ export default function Profile({ user }) {
                         </div>
                     </div>
                 )}
-
+                <TwoFactorSetup user={user} />
             </div>
         </div>
     );

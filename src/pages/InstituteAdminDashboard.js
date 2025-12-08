@@ -3,9 +3,10 @@ import { signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import toast, { Toaster } from 'react-hot-toast'; 
+import toast, { Toaster } from 'react-hot-toast';
 import './Dashboard.css';
 import logo from "../assets/logo.png";
+import TwoFactorSetup from '../components/TwoFactorSetup';
 
 // Import components
 import AddTeacher from './AddTeacher';
@@ -39,7 +40,7 @@ const DashboardHome = ({ instituteName, instituteId }) => {
         const newCode = `${prefix}-${randomNum}`;
 
         try {
-            await setDoc(doc(db, "institutes", instituteId), { 
+            await setDoc(doc(db, "institutes", instituteId), {
                 code: newCode, instituteName, instituteId
             }, { merge: true });
             setCode(newCode);
@@ -53,23 +54,23 @@ const DashboardHome = ({ instituteName, instituteId }) => {
 
     return (
         <div className="content-section">
-            <div style={{marginBottom:'30px'}}>
+            <div style={{ marginBottom: '30px' }}>
                 <h2 className="content-title">Welcome, Admin!</h2>
                 <p className="content-subtitle">Manage {instituteName || 'your institute'}.</p>
             </div>
-            
+
             <div className="card" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: 'none' }}>
-                <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'15px'}}>
-                    <div className="icon-box-modern" style={{background:'white', color:'var(--tech-blue)'}}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '15px' }}>
+                    <div className="icon-box-modern" style={{ background: 'white', color: 'var(--tech-blue)' }}>
                         <i className="fas fa-key"></i>
                     </div>
-                    <h3 style={{margin:0, color:'#1e3a8a'}}>Institute Code</h3>
+                    <h3 style={{ margin: 0, color: '#1e3a8a' }}>Institute Code</h3>
                 </div>
-                <p style={{ color: '#1e40af', marginBottom: '20px', fontSize:'14px' }}>
+                <p style={{ color: '#1e40af', marginBottom: '20px', fontSize: '14px' }}>
                     Share this unique code with your students for registration.
                 </p>
                 {code ? (
-                    <div style={{ fontSize: '28px', fontWeight: '800', color: '#1e3a8a', background: 'rgba(255,255,255,0.6)', padding: '15px', borderRadius: '12px', textAlign:'center', letterSpacing:'2px', border:'1px solid rgba(255,255,255,0.8)' }}>
+                    <div style={{ fontSize: '28px', fontWeight: '800', color: '#1e3a8a', background: 'rgba(255,255,255,0.6)', padding: '15px', borderRadius: '12px', textAlign: 'center', letterSpacing: '2px', border: '1px solid rgba(255,255,255,0.8)' }}>
                         {code}
                     </div>
                 ) : (
@@ -86,7 +87,7 @@ export default function InstituteAdminDashboard() {
     const [adminInfo, setAdminInfo] = useState(null);
     const [activePage, setActivePage] = useState('dashboard');
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-    
+
     // ✅ MODAL STATE (Required for Delete Confirmation)
     const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'info', onConfirm: null });
 
@@ -103,7 +104,7 @@ export default function InstituteAdminDashboard() {
     }, []);
 
     const handleLogout = async () => { await signOut(auth); navigate('/'); };
-    
+
     // ✅ HELPER FUNCTIONS (Passed to children)
     const showModal = (title, message, type = 'info', onConfirm = null) => {
         setModal({ isOpen: true, title, message, type, onConfirm });
@@ -111,25 +112,39 @@ export default function InstituteAdminDashboard() {
     const closeModal = () => setModal({ ...modal, isOpen: false });
 
     const NavLink = ({ page, iconClass, label }) => (
-      <li className={activePage === page ? 'active' : ''} onClick={() => {setActivePage(page); setIsMobileNavOpen(false);}}>
-          <i className={`fas ${iconClass}`}></i> <span>{label}</span>
-      </li>
+        <li className={activePage === page ? 'active' : ''} onClick={() => { setActivePage(page); setIsMobileNavOpen(false); }}>
+            <i className={`fas ${iconClass}`}></i> <span>{label}</span>
+        </li>
     );
 
     const renderContent = () => {
-        if (!adminInfo) return <div style={{textAlign:'center', marginTop:'50px'}}>Loading...</div>;
+        if (!adminInfo) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
         const { instituteName, instituteId } = adminInfo;
 
         switch (activePage) {
             case 'dashboard': return <DashboardHome instituteName={instituteName} instituteId={instituteId} />;
-            
+
             // ✅ FIXED: PASSING showModal TO ALL COMPONENTS
             case 'addDepartment': return <AddDepartment instituteId={instituteId} instituteName={instituteName} showModal={showModal} />;
             case 'addHOD': return <AddHOD instituteId={instituteId} instituteName={instituteName} showModal={showModal} />;
             case 'addTeacher': return <AddTeacher instituteId={instituteId} instituteName={instituteName} showModal={showModal} />;
             case 'addStudent': return <AddStudent instituteId={instituteId} instituteName={instituteName} showModal={showModal} />;
             case 'manageUsers': return <ManageInstituteUsers instituteId={instituteId} showModal={showModal} />;
-            
+            case 'security': return (
+                <div className="content-section">
+                    <h2 className="content-title">Institute Security</h2>
+                    <div className="cards-grid">
+                        <div className="card">
+                            <h3>Admin Profile</h3>
+                            <p><strong>Name:</strong> {adminInfo.firstName} {adminInfo.lastName}</p>
+                            <p><strong>Institute:</strong> {adminInfo.instituteName}</p>
+                        </div>
+                        {/* ✅ 2FA COMPONENT */}
+                        <TwoFactorSetup user={adminInfo} />
+                    </div>
+                </div>
+            );
+
             default: return <DashboardHome instituteName={instituteName} instituteId={instituteId} />;
         }
     };
@@ -137,7 +152,7 @@ export default function InstituteAdminDashboard() {
     return (
         <div className="dashboard-container">
             {/* ✅ TOAST (For Success/Info) */}
-            <Toaster position="top-right" reverseOrder={false} />
+            <Toaster position="center" reverseOrder={false} />
 
             {/* ✅ MODAL (For Delete Confirmation) */}
             {modal.isOpen && (
@@ -164,7 +179,7 @@ export default function InstituteAdminDashboard() {
 
             {isMobileNavOpen && <div className="nav-overlay" onClick={() => setIsMobileNavOpen(false)}></div>}
             <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`}>
-                <div className="logo-container"><img src={logo} alt="Logo" className="sidebar-logo"/><span className="logo-text">Acadex</span></div>
+                <div className="logo-container"><img src={logo} alt="Logo" className="sidebar-logo" /><span className="logo-text">Acadex</span></div>
                 {adminInfo && <div className="teacher-info"><h4>{adminInfo.firstName} {adminInfo.lastName}</h4><p>Institute Admin</p></div>}
                 <ul className="menu">
                     <NavLink page="dashboard" iconClass="fa-tachometer-alt" label="Dashboard" />
@@ -173,15 +188,16 @@ export default function InstituteAdminDashboard() {
                     <NavLink page="addTeacher" iconClass="fa-chalkboard-teacher" label="Add Teacher" />
                     <NavLink page="addStudent" iconClass="fa-user-graduate" label="Add Student" />
                     <NavLink page="manageUsers" iconClass="fa-users" label="Manage Users" />
+                    <NavLink page="security" iconClass="fa-lock" label="Security" />
                 </ul>
                 <div className="sidebar-footer"><button onClick={handleLogout} className="logout-btn"><i className="fas fa-sign-out-alt"></i><span>Logout</span></button></div>
             </aside>
             <main className="main-content">
-                 <header className="mobile-header">
+                <header className="mobile-header">
                     <button className="hamburger-btn" onClick={() => setIsMobileNavOpen(true)}><i className="fas fa-bars"></i></button>
-                    <div className="mobile-brand"><img src={logo}  alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
-                    <div style={{width:'40px'}}></div>
-                 </header>
+                    <div className="mobile-brand"><img src={logo} alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
+                    <div style={{ width: '40px' }}></div>
+                </header>
                 {renderContent()}
             </main>
         </div>

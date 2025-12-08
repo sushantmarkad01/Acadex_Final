@@ -1,0 +1,207 @@
+/* src/components/TwoFactorSetup.css */
+
+/* Main Glassmorphism Container */
+.tfa-container {
+  background: rgba(255, 255, 255, 0.85); /* Slightly transparent */
+  backdrop-filter: blur(12px);            /* Blur effect */
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 24px;
+  padding: 30px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08); /* Soft shadow */
+  text-align: center;
+  max-width: 100%;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.tfa-container:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 50px rgba(37, 99, 235, 0.15); /* Blue glow on hover */
+}
+
+/* Header Section */
+.tfa-header {
+  margin-bottom: 25px;
+}
+
+.tfa-icon {
+  font-size: 42px;
+  margin-bottom: 12px;
+  display: inline-block;
+  background: #f1f5f9;
+  width: 70px;
+  height: 70px;
+  line-height: 70px;
+  border-radius: 50%;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.tfa-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.tfa-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+/* QR Code Wrapper */
+.qr-wrapper {
+  background: white;
+  padding: 15px;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  display: inline-block;
+  margin-bottom: 20px;
+  border: 2px solid #f8fafc;
+}
+
+.qr-image {
+  width: 160px;
+  height: 160px;
+  display: block;
+  border-radius: 8px;
+}
+
+/* Manual Code Box (Click to Copy) */
+.manual-code-box {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 15px 0 25px 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.manual-code-box:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.code-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 1px;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.code-value {
+  font-family: 'Courier New', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #334155;
+  letter-spacing: 1.5px;
+}
+
+.copy-hint {
+  font-size: 11px;
+  color: #2563eb;
+  margin-top: 4px;
+  display: block;
+  font-weight: 600;
+}
+
+/* 6-Digit Input Field */
+.tfa-input {
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  font-size: 24px;
+  text-align: center;
+  letter-spacing: 8px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 15px;
+  transition: all 0.3s;
+  font-family: monospace;
+}
+
+.tfa-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+  outline: none;
+}
+
+.tfa-input::placeholder {
+  color: #cbd5e1;
+  letter-spacing: 4px;
+  font-size: 18px;
+}
+
+/* Modern Gradient Buttons */
+.btn-modern {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-start {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+}
+
+.btn-start:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+}
+
+.btn-verify {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.btn-verify:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+}
+
+.btn-verify:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Success Badge */
+.active-badge {
+  background: #dcfce7;
+  color: #166534;
+  padding: 8px 16px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #bbf7d0;
+}
