@@ -5,6 +5,7 @@ import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import toast, { Toaster } from 'react-hot-toast'; 
 import './Dashboard.css';
+import logo from "../assets/logo.png";
 
 // Import components
 import AddTeacher from './AddTeacher';
@@ -163,7 +164,7 @@ export default function InstituteAdminDashboard() {
 
             {isMobileNavOpen && <div className="nav-overlay" onClick={() => setIsMobileNavOpen(false)}></div>}
             <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`}>
-                <div className="logo-container"><img src="https://iili.io/KoAVeZg.md.png" alt="Logo" className="sidebar-logo"/><span className="logo-text">Acadex</span></div>
+                <div className="logo-container"><img src={logo} alt="Logo" className="sidebar-logo"/><span className="logo-text">Acadex</span></div>
                 {adminInfo && <div className="teacher-info"><h4>{adminInfo.firstName} {adminInfo.lastName}</h4><p>Institute Admin</p></div>}
                 <ul className="menu">
                     <NavLink page="dashboard" iconClass="fa-tachometer-alt" label="Dashboard" />
@@ -178,7 +179,7 @@ export default function InstituteAdminDashboard() {
             <main className="main-content">
                  <header className="mobile-header">
                     <button className="hamburger-btn" onClick={() => setIsMobileNavOpen(true)}><i className="fas fa-bars"></i></button>
-                    <div className="mobile-brand"><img src="https://iili.io/KoAVeZg.md.png" alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
+                    <div className="mobile-brand"><img src={logo}  alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
                     <div style={{width:'40px'}}></div>
                  </header>
                 {renderContent()}

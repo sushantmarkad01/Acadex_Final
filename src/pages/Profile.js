@@ -4,21 +4,29 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import './Dashboard.css';
 
+// ✅ Predefined Interest Categories for Deep Data (Judge's Requirement)
+const INTEREST_DOMAINS = {
+    "Coding & Tech": ["Frontend Dev", "Backend Dev", "Full Stack", "AI/ML", "App Dev", "Cybersecurity", "Blockchain"],
+    "Core Engineering": ["Thermodynamics", "Circuit Design", "Mechanics", "Robotics", "Civil Structures", "IoT"],
+    "Business & Management": ["Digital Marketing", "Finance", "Startup/Entrepreneurship", "HR", "Supply Chain"],
+    "Creative & Design": ["UI/UX Design", "Graphic Design", "Video Editing", "Animation", "Content Writing"],
+    "Science & Research": ["Physics", "Chemistry", "Biology", "Space Science", "Environmental Science"]
+};
+
 export default function Profile({ user }) {
     const [isEditing, setIsEditing] = useState(false);
-    const [profileData, setProfileData] = useState(user || null); // Hold full profile data (including resumeData)
+    const [profileData, setProfileData] = useState(user || null);
+    
+    // Form State including new Deep Data fields
     const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        phone: '',
-        subject: '',
-        email: '',
-        careerGoal: '',
-        year: '',       // ✅ Added for Students
-        qualification: '' // ✅ Added for Teachers
+        firstName: '', lastName: '', phone: '', subject: '', email: '',
+        careerGoal: '', year: '', qualification: '',
+        // ✅ New Structured Fields
+        domain: '',
+        subDomain: '',
+        specificSkills: '' 
     });
 
-    // Fetch latest data (including resumeData) on mount
     useEffect(() => {
         const fetchProfile = async () => {
             if (auth.currentUser) {
@@ -34,21 +42,24 @@ export default function Profile({ user }) {
                         subject: data.subject || '',
                         email: data.email || '',
                         careerGoal: data.careerGoal || '',
-                        year: data.extras?.year || '', // Fetch from extras or top-level
-                        qualification: data.qualification || ''
+                        year: data.extras?.year || '',
+                        qualification: data.qualification || '',
+                        // ✅ Load existing deep data
+                        domain: data.domain || '',
+                        subDomain: data.subDomain || '',
+                        specificSkills: data.specificSkills || '' 
                     });
                 }
             }
         };
         fetchProfile();
-    }, [user, isEditing]); // Re-fetch when editing toggles (to reset or update)
+    }, [user, isEditing]);
 
     const handleSave = async () => {
         const toastId = toast.loading("Updating Profile...");
         try {
             const userRef = doc(db, 'users', auth.currentUser.uid);
             
-            // Construct update object
             const updates = {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
@@ -58,16 +69,21 @@ export default function Profile({ user }) {
                 qualification: formData.qualification
             };
 
-            // Handle Student Specifics
             if (user.role === 'student') {
                 updates.careerGoal = formData.careerGoal;
-                // Store year in 'extras' or top level depending on your schema. 
-                // Using top-level for easier access, but merging into extras is also fine.
                 updates['extras.year'] = formData.year; 
+                
+                // ✅ Save Deep Data for AI Context
+                updates.domain = formData.domain;
+                updates.subDomain = formData.subDomain;
+                updates.specificSkills = formData.specificSkills;
+                
+                // Save legacy interests string for backward compatibility with simple filters
+                updates.interests = `${formData.domain}, ${formData.subDomain}, ${formData.specificSkills}`; 
             }
 
             await updateDoc(userRef, updates);
-            toast.success("Profile Updated!", { id: toastId });
+            toast.success("Profile Updated! AI Recommendations refreshed.", { id: toastId });
             setIsEditing(false);
         } catch (err) {
             toast.error("Error: " + err.message, { id: toastId });
@@ -75,14 +91,25 @@ export default function Profile({ user }) {
     };
 
     if (!profileData) return <div>Loading...</div>;
-
-    // Destructure resume data safely (only for students)
-    const { skills = [], experience = "", projects = [] } = profileData.resumeData || {};
+    const { skills = [], projects = [] } = profileData.resumeData || {};
 
     return (
         <div className="content-section">
             <h2 className="content-title">My Profile</h2>
             
+            {/* ✅ INCENTIVE BANNER (Why should I fill this?) */}
+            {user.role === 'student' && (
+                <div style={{background: 'linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%)', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #bfdbfe', display:'flex', alignItems:'center', gap:'15px'}}>
+                    <div style={{fontSize:'24px'}}>🎓</div>
+                    <div>
+                        <h4 style={{margin:0, color:'#1e40af'}}>Boost Your Internal Marks!</h4>
+                        <p style={{margin:0, fontSize:'13px', color:'#1e3a8a'}}>
+                            Complete your <strong>Career Interest Profile</strong> below. The AI uses this to assign tasks that count towards your <strong>Extra Curricular Academic Credits</strong>.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* Header Card */}
             <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '25px', background: 'linear-gradient(135deg, #fff 0%, #f8fafc 100%)' }}>
                 <div style={{ 
@@ -98,12 +125,12 @@ export default function Profile({ user }) {
                         {profileData.role === 'hod' ? 'HOD' : profileData.role === 'teacher' ? 'Teacher' : 'Student'} • {profileData.department}
                     </p>
                     
-                    {/* Role Specific Badge */}
                     <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
                         {user.role === 'student' && (
                             <>
                                 <span className="status-badge status-approved">Roll: {profileData.rollNo}</span>
-                                <span className="status-badge" style={{background:'#e0f2fe', color:'#0284c7'}}>{profileData.xp || 0} XP</span>
+                                {/* ✅ Showing Credits instead of just "XP" */}
+                                <span className="status-badge" style={{background:'#e0f2fe', color:'#0284c7'}}>{profileData.xp || 0} Credits Earned</span>
                             </>
                         )}
                         {user.role === 'teacher' && (
@@ -123,7 +150,7 @@ export default function Profile({ user }) {
 
             <div className="cards-grid" style={{alignItems: 'start'}}> 
                 
-                {/* --- LEFT COLUMN: PERSONAL DETAILS --- */}
+                {/* Personal Details Column */}
                 <div className="card">
                     <h3>Personal Details</h3>
                     <div className="input-group"><label>First Name</label><input type="text" disabled={!isEditing} value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} /></div>
@@ -131,7 +158,6 @@ export default function Profile({ user }) {
                     <div className="input-group"><label>Email</label><input type="email" disabled={!isEditing} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></div>
                     <div className="input-group"><label>Phone Number</label><input type="tel" disabled={!isEditing} placeholder="+91..." value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
 
-                    {/* TEACHER FIELDS */}
                     {user.role === 'teacher' && (
                         <>
                             <div className="input-group"><label>Subject Specification</label><input type="text" disabled={!isEditing} value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} /></div>
@@ -139,47 +165,88 @@ export default function Profile({ user }) {
                         </>
                     )}
                     
-                    {/* STUDENT FIELDS */}
                     {user.role === 'student' && (
                         <>
                             <div className="input-group"><label>Roll Number</label><input type="text" disabled value={user.rollNo} style={{backgroundColor: '#f9fafb', color:'#6b7280'}} /></div>
-                            
                             <div className="input-group">
                                 <label>Year</label>
-                                <select 
-                                    disabled={!isEditing} 
-                                    value={formData.year} 
-                                    onChange={e => setFormData({...formData, year: e.target.value})}
-                                    style={{width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: isEditing ? 'white' : '#f9fafb'}}
-                                >
+                                <select disabled={!isEditing} value={formData.year} onChange={e => setFormData({...formData, year: e.target.value})} style={{width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: isEditing ? 'white' : '#f9fafb'}}>
                                     <option value="FE">FE (First Year)</option>
                                     <option value="SE">SE (Second Year)</option>
                                     <option value="TE">TE (Third Year)</option>
                                     <option value="BE">BE (Final Year)</option>
                                 </select>
                             </div>
-
-                            <div className="input-group" style={{marginTop:'10px'}}>
-                                <label style={{color:'#2563eb', fontWeight:'bold'}}>🎯 Career Goal</label>
-                                <input 
-                                    type="text" 
-                                    disabled={!isEditing} 
-                                    placeholder="e.g. Full Stack Developer..." 
-                                    value={formData.careerGoal} 
-                                    onChange={e => setFormData({...formData, careerGoal: e.target.value})} 
-                                    style={{border: isEditing ? '2px solid #2563eb' : '1px solid #e2e8f0'}}
-                                />
-                            </div>
                         </>
                     )}
                 </div>
 
-                {/* --- RIGHT COLUMN: PORTFOLIO (STUDENTS ONLY) --- */}
+                {/* ✅ NEW: CAREER INTEREST PROFILE (The Solution to Judge's Question) */}
+                {user.role === 'student' && (
+                    <div className="card" style={{border: '2px solid #8b5cf6'}}>
+                        <h3 style={{color: '#7c3aed', display:'flex', alignItems:'center', gap:'10px'}}>
+                            <i className="fas fa-bullseye"></i> Career Focus Area
+                        </h3>
+                        <p style={{fontSize:'13px', color:'#64748b', marginBottom:'20px'}}>
+                            Select your exact interests so <strong>Grow AI</strong> can generate relevant curriculum tasks for you.
+                        </p>
+
+                        {/* 1. Domain Selection */}
+                        <div className="input-group">
+                            <label>Primary Interest Domain</label>
+                            <select 
+                                disabled={!isEditing} 
+                                value={formData.domain} 
+                                onChange={e => setFormData({...formData, domain: e.target.value, subDomain: ''})} // Reset sub on change
+                                style={{width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: isEditing ? 'white' : '#f9fafb'}}
+                            >
+                                <option value="">-- Select Domain --</option>
+                                {Object.keys(INTEREST_DOMAINS).map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                        </div>
+
+                        {/* 2. Sub-Domain Selection */}
+                        {formData.domain && (
+                            <div className="input-group">
+                                <label>Specialization</label>
+                                <select 
+                                    disabled={!isEditing} 
+                                    value={formData.subDomain} 
+                                    onChange={e => setFormData({...formData, subDomain: e.target.value})} 
+                                    style={{width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: isEditing ? 'white' : '#f9fafb'}}
+                                >
+                                    <option value="">-- Select Specialization --</option>
+                                    {INTEREST_DOMAINS[formData.domain].map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                                </select>
+                            </div>
+                        )}
+
+                        {/* 3. Specific Skills */}
+                        <div className="input-group">
+                            <label>Specific Technologies / Topics</label>
+                            <input 
+                                type="text" 
+                                disabled={!isEditing} 
+                                placeholder="e.g. React, Python, AutoCAD, Stock Market..." 
+                                value={formData.specificSkills} 
+                                onChange={e => setFormData({...formData, specificSkills: e.target.value})} 
+                                style={{backgroundColor: isEditing ? 'white' : '#f9fafb'}}
+                            />
+                            <small style={{color:'#64748b'}}>Used by AI to customize your challenges.</small>
+                        </div>
+
+                        <div className="input-group" style={{marginTop:'10px'}}>
+                            <label>Ultimate Career Goal</label>
+                            <input type="text" disabled={!isEditing} placeholder="e.g. Google Software Engineer" value={formData.careerGoal} onChange={e => setFormData({...formData, careerGoal: e.target.value})} />
+                        </div>
+                    </div>
+                )}
+                
+                {/* Portfolio Section (Kept as is for students) */}
                 {user.role === 'student' && (
                     <div className="card" style={{border: 'none', boxShadow: 'none', padding: 0, background: 'transparent'}}>
                         <h3 style={{ fontSize: '18px', marginBottom: '15px', color: '#334155' }}>Professional Portfolio</h3>
                         
-                        {/* Skills */}
                         <div className="card" style={{marginBottom: '20px'}}>
                             <h4 style={{ margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <i className="fas fa-tools" style={{ color: '#3b82f6' }}></i> Skills
@@ -195,7 +262,6 @@ export default function Profile({ user }) {
                             ) : <p style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '14px' }}>No skills added.</p>}
                         </div>
 
-                        {/* Projects */}
                         <div className="card">
                             <h4 style={{ margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <i className="fas fa-laptop-code" style={{ color: '#8b5cf6' }}></i> Key Projects

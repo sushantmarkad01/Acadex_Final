@@ -6,6 +6,7 @@ import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import './Dashboard.css'; 
+import logo from "../assets/logo.png";
 
 const BACKEND_URL = "https://acadex-backend-n2wh.onrender.com";
 
@@ -179,7 +180,7 @@ export default function SuperAdminDashboard() {
             {isMobileNavOpen && <div className="nav-overlay" onClick={() => setIsMobileNavOpen(false)}></div>}
 
             <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`}>
-                <div className="logo-container"><img src="https://iili.io/KoAVeZg.md.png" alt="Logo" className="sidebar-logo"/><span className="logo-text">AcadeX</span></div>
+                <div className="logo-container"><img src={logo} alt="Logo" className="sidebar-logo"/><span className="logo-text">AcadeX</span></div>
                 <div className="teacher-info"><h4>Super Admin</h4><p>Platform Manager</p></div>
                 <ul className="menu"><li className="active"><i className="fas fa-shield-alt" style={{width:'20px'}}></i><span>Applications</span></li></ul>
                 <div className="sidebar-footer"><button onClick={() => signOut(auth).then(() => navigate('/'))} className="logout-btn"><i className="fas fa-sign-out-alt"></i><span>Logout</span></button></div>
@@ -188,7 +189,7 @@ export default function SuperAdminDashboard() {
             <main className="main-content">
                 <header className="mobile-header">
                     <button className="hamburger-btn" onClick={() => setIsMobileNavOpen(true)}><i className="fas fa-bars"></i></button>
-                    <div className="mobile-brand"><img src="https://iili.io/KoAVeZg.md.png" alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
+                    <div className="mobile-brand"><img src={logo} alt="Logo" className="mobile-logo-img" /><span className="mobile-logo-text">AcadeX</span></div>
                     <div style={{width:'40px'}}></div>
                 </header>
 

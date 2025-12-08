@@ -66,7 +66,6 @@ const LeaveRequestForm = ({ user }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        // ✅ Toast loading with ID to update later
         const toastId = toast.loading("Uploading & Sending...");
 
         try {
@@ -90,13 +89,10 @@ const LeaveRequestForm = ({ user }) => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
 
-            // ✅ Update existing toast to success
             toast.success("Request sent to HOD!", { id: toastId });
-            
             setForm({ reason: '', fromDate: '', toDate: '' });
             setFile(null);
         } catch (err) { 
-            // ✅ Update existing toast to error
             toast.error(err.message, { id: toastId }); 
         } finally { 
             setLoading(false); 
@@ -194,39 +190,12 @@ const NoticesView = ({ notices }) => {
     );
 };
 
-// --- COMPONENT: Smart Schedule Card ---
-const SmartScheduleCard = ({ user }) => {
-    const [currentSlot, setCurrentSlot] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchSchedule = async () => {
-            if (!user?.department || !user?.year) { setLoading(false); return; }
-            let sem = user.semester || (user.year === 'FE' ? '1' : user.year === 'SE' ? '3' : user.year === 'TE' ? '5' : '7');
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const today = days[new Date().getDay()];
-            if (today === 'Sunday') { setCurrentSlot({ type: 'Holiday', subject: 'Weekend! Relax.' }); setLoading(false); return; }
-            try {
-                const docSnap = await getDoc(doc(db, 'timetables', `${user.department}_Sem${sem}_${today}`));
-                if (docSnap.exists()) {
-                    const slots = docSnap.data().slots;
-                    const now = getCurrentTimeMinutes();
-                    const activeSlot = slots.find(slot => {
-                        const start = getMinutesFromTime(slot.startTime);
-                        const end = getMinutesFromTime(slot.endTime);
-                        return now >= start && now < end;
-                    });
-                    setCurrentSlot(activeSlot || { type: 'Free', subject: 'No active class right now.' });
-                } else { setCurrentSlot(null); }
-            } catch (error) { console.error(error); } finally { setLoading(false); }
-        };
-        fetchSchedule();
-        const interval = setInterval(fetchSchedule, 60000); 
-        return () => clearInterval(interval);
-    }, [user]);
-
+// --- COMPONENT: Smart Schedule Card (Presentational) ---
+const SmartScheduleCard = ({ user, currentSlot, loading }) => {
+    // Determine status from passed prop
     const isFree = currentSlot?.type === 'Free' || currentSlot?.type === 'Break' || currentSlot?.type === 'Holiday';
-    if (loading) return <div className="card" style={{padding:'20px', textAlign:'center'}}>Loading...</div>;
+
+    if (loading) return <div className="card" style={{padding:'20px', textAlign:'center'}}>Loading Schedule...</div>;
 
     return (
         <>
@@ -238,6 +207,7 @@ const SmartScheduleCard = ({ user }) => {
                         <p style={{margin:'4px 0 0 0', fontSize:'13px', color:'#64748b'}}>{currentSlot?.startTime ? `${currentSlot.startTime} - ${currentSlot.endTime}` : "Enjoy your free time!"}</p>
                     </div>
                 </div>
+                {isFree && <div style={{marginTop:'15px', padding:'10px', background:'#dcfce7', color:'#166534', borderRadius:'8px', fontSize:'13px'}}>✨ Free Period Detected! Check "Free Tasks" tab for AI activities.</div>}
             </div>
             {isFree && <FreePeriodQuiz user={user} isFree={isFree} />}
         </>
@@ -287,7 +257,7 @@ const AttendanceOverview = ({ user }) => {
 };
 
 // --- DASHBOARD HOME ---
-const DashboardHome = ({ user, setLiveSession, setRecentAttendance, liveSession, recentAttendance, setShowScanner }) => {
+const DashboardHome = ({ user, setLiveSession, setRecentAttendance, liveSession, recentAttendance, setShowScanner, currentSlot }) => {
     useEffect(() => {
         if (!user?.instituteId) return;
         const q = query(collection(db, "live_sessions"), where("isActive", "==", true), where("instituteId", "==", user.instituteId));
@@ -306,7 +276,9 @@ const DashboardHome = ({ user, setLiveSession, setRecentAttendance, liveSession,
         <div className="content-section">
             <h2 className="content-title">Welcome, {user.firstName}!</h2>
             <div className="cards-grid">
-                <SmartScheduleCard user={user} />
+                {/* ✅ Pass currentSlot to display */}
+                <SmartScheduleCard user={user} currentSlot={currentSlot} loading={!currentSlot} />
+                
                 <AttendanceOverview user={user} />
                 <div className="card" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '15px' }}>
@@ -384,6 +356,12 @@ export default function StudentDashboard() {
   const [liveSession, setLiveSession] = useState(null);
   const [recentAttendance, setRecentAttendance] = useState([]);
   
+  // ✅ GLOBAL SCHEDULE STATE
+  const [currentSlot, setCurrentSlot] = useState(null);
+  const [isFreePeriod, setIsFreePeriod] = useState(false);
+  // ✅ CHATBOT PROMPT STATE
+  const [chatInitialMessage, setChatInitialMessage] = useState('');
+  
   const scannerRef = useRef(null); 
   const navigate = useNavigate();
 
@@ -393,6 +371,59 @@ export default function StudentDashboard() {
     return () => unsub();
   }, []);
 
+  // ✅ GLOBAL SCHEDULE LOGIC (Runs every minute)
+  useEffect(() => {
+      const fetchSchedule = async () => {
+          if (!user?.department || !user?.year) return;
+          
+          let sem = user.semester || (user.year === 'FE' ? '1' : user.year === 'SE' ? '3' : user.year === 'TE' ? '5' : '7');
+          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const today = days[new Date().getDay()];
+          
+          // Weekend Check
+          if (today === 'Sunday') { 
+              setCurrentSlot({ type: 'Holiday', subject: 'Weekend! Relax.' }); 
+              if (!isFreePeriod) {
+                  // setIsFreePeriod(true); // Optional: if you want weekend to act as free period
+              }
+              return; 
+          }
+
+          try {
+              const docSnap = await getDoc(doc(db, 'timetables', `${user.department}_Sem${sem}_${today}`));
+              if (docSnap.exists()) {
+                  const slots = docSnap.data().slots;
+                  const now = getCurrentTimeMinutes();
+                  const activeSlot = slots.find(slot => {
+                      const start = getMinutesFromTime(slot.startTime);
+                      const end = getMinutesFromTime(slot.endTime);
+                      return now >= start && now < end;
+                  });
+
+                  const slotData = activeSlot || { type: 'Free', subject: 'No active class.' };
+                  setCurrentSlot(slotData);
+                  
+                  // ✅ DETECT FREE PERIOD TYPE
+                  const isNowFree = slotData.type === 'Free' || slotData.type === 'Break' || slotData.type === 'Holiday';
+                  
+                  if (isNowFree && !isFreePeriod) {
+                      toast("Free Period Detected! Curriculum Tasks generated.", { icon: '🤖', duration: 5000 });
+                      setIsFreePeriod(true);
+                  } else if (!isNowFree) {
+                      setIsFreePeriod(false);
+                  }
+              } else { 
+                  setCurrentSlot(null); 
+              }
+          } catch (error) { console.error(error); }
+      };
+      
+      fetchSchedule();
+      const interval = setInterval(fetchSchedule, 60000); // Check every minute
+      return () => clearInterval(interval);
+  }, [user, isFreePeriod]);
+
+  // Notice Fetching Logic
   useEffect(() => {
       if (!user?.instituteId) return;
       const q = query(collection(db, 'announcements'), where('instituteId', '==', user.instituteId));
@@ -435,12 +466,17 @@ export default function StudentDashboard() {
   const badgeCount = Math.max(0, notices.length - readCount);
   const handleLogout = async () => { await signOut(auth); navigate('/'); };
 
+  // ✅ FUNCTION TO OPEN AI WITH PROMPT
+  const handleOpenAiWithPrompt = (prompt) => {
+      setChatInitialMessage(prompt);
+      setIsChatOpen(true);
+  };
+
   const onScanSuccess = (decodedText) => {
         if (scannerRef.current) {
             scannerRef.current.pause(true); 
         }
         setShowScanner(false);
-        // ✅ Store ID so we can update it
         const toastId = toast.loading("Verifying...");
         
         navigator.geolocation.getCurrentPosition(async (position) => {
@@ -453,7 +489,6 @@ export default function StudentDashboard() {
                 });
                 const data = await response.json();
                 
-                // ✅ Update existing toast instead of creating new one
                 if (response.ok) {
                     toast.success(data.message, { id: toastId });
                 } else {
@@ -490,14 +525,17 @@ export default function StudentDashboard() {
   const renderContent = () => {
     if (!user) return <div style={{ textAlign: 'center', paddingTop: 50 }}>Loading...</div>;
     switch (activePage) {
-      case 'dashboard': return <DashboardHome user={user} onOpenAI={() => setIsChatOpen(true)} liveSession={liveSession} setLiveSession={setLiveSession} recentAttendance={recentAttendance} setRecentAttendance={setRecentAttendance} setShowScanner={setShowScanner} />;
-      case 'tasks': return <FreePeriodTasks user={user} />;
+      case 'dashboard': return <DashboardHome user={user} currentSlot={currentSlot} onOpenAI={() => setIsChatOpen(true)} liveSession={liveSession} setLiveSession={setLiveSession} recentAttendance={recentAttendance} setRecentAttendance={setRecentAttendance} setShowScanner={setShowScanner} />;
+      
+      // ✅ PASS isFreePeriod and onOpenAIWithPrompt
+      case 'tasks': return <FreePeriodTasks user={user} isFreePeriod={isFreePeriod} onOpenAIWithPrompt={handleOpenAiWithPrompt} />;
+      
       case 'profile': return <Profile user={user} />;
       case 'plans': return <CareerRoadmap user={user} />; 
       case 'leaderboard': return <Leaderboard user={user} />;
       case 'leave': return <LeaveRequestForm user={user} />;
       case 'notices': return <NoticesView notices={notices} />;
-      default: return <DashboardHome user={user} onOpenAI={() => setIsChatOpen(true)} liveSession={liveSession} setLiveSession={setLiveSession} recentAttendance={recentAttendance} setRecentAttendance={setRecentAttendance} setShowScanner={setShowScanner} />;
+      default: return <DashboardHome user={user} currentSlot={currentSlot} onOpenAI={() => setIsChatOpen(true)} liveSession={liveSession} setLiveSession={setLiveSession} recentAttendance={recentAttendance} setRecentAttendance={setRecentAttendance} setShowScanner={setShowScanner} />;
     }
   };
 
@@ -520,11 +558,10 @@ export default function StudentDashboard() {
             <div className="teacher-info" onClick={() => { setActivePage('profile'); setIsMobileNavOpen(false); }} style={{ cursor: 'pointer' }}>
                 <h4>{user.firstName} {user.lastName}</h4>
                 <p>Roll No: {user.rollNo}</p>
-                <p style={{fontSize:'14px', color:'#059669', fontWeight:'700', margin:'4px 0'}}>{user.xp || 0} XP {user.badges?.map(b => <span key={b} style={{marginLeft:'4px'}}>{b === 'novice' ? '🌱' : '🔥'}</span>)}</p>
+                <p style={{fontSize:'14px', color:'#059669', fontWeight:'700', margin:'4px 0'}}>{user.xp || 0} Credits Earned</p>
             </div>
         )}
         <ul className="menu">
-            {/* ✅ FIXED GAP */}
             <li className={activePage === 'dashboard' ? 'active' : ''} onClick={() => {setActivePage('dashboard'); setIsMobileNavOpen(false);}}>
                 <div style={{display:'flex', alignItems:'center', width:'100%', gap: '15px'}}>
                     <i className="fas fa-home" style={{ width: '24px', textAlign: 'center' }}></i>
@@ -538,12 +575,16 @@ export default function StudentDashboard() {
                     {badgeCount > 0 && <span className="nav-badge" style={{ background: '#ef4444', color: 'white', fontSize: '10px', padding: '2px 8px', borderRadius: '12px', marginLeft: 'auto', fontWeight: 'bold' }}>{badgeCount}</span>}
                 </div>
             </li>
+            
+            {/* ✅ UPDATED FREE TASKS ITEM */}
             <li className={activePage === 'tasks' ? 'active' : ''} onClick={() => {setActivePage('tasks'); setIsMobileNavOpen(false);}}>
                 <div style={{display:'flex', alignItems:'center', width:'100%', gap: '15px'}}>
                     <i className="fas fa-check-circle" style={{ width: '24px', textAlign: 'center' }}></i>
                     <span>Free Period Tasks</span>
+                    {isFreePeriod && <span className="nav-badge pulsate" style={{ background: '#10b981', color: 'white', fontSize: '10px', padding: '2px 8px', borderRadius: '12px', marginLeft: 'auto', fontWeight: 'bold' }}>LIVE</span>}
                 </div>
             </li>
+            
             <li className={activePage === 'leaderboard' ? 'active' : ''} onClick={() => {setActivePage('leaderboard'); setIsMobileNavOpen(false);}}>
                 <div style={{display:'flex', alignItems:'center', width:'100%', gap: '15px'}}>
                     <i className="fas fa-trophy" style={{ width: '24px', textAlign: 'center' }}></i>
@@ -613,9 +654,14 @@ export default function StudentDashboard() {
         />
       </main>
 
-      {/* 🚀 Render Chatbot */}
+      {/* 🚀 Render Chatbot with PROMPT PASSING */}
       {user && (
-          <AiChatbot user={user} isOpenProp={isChatOpen} onClose={() => setIsChatOpen(false)} />
+          <AiChatbot 
+            user={user} 
+            isOpenProp={isChatOpen} 
+            onClose={() => setIsChatOpen(false)} 
+            initialMessage={chatInitialMessage} // ✅ Pass the magic prompt
+          />
       )}
     </div>
   );
