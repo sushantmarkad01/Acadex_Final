@@ -2089,4 +2089,40 @@ textarea.modern-input:focus { border-color: var(--tech-blue); box-shadow: 0 0 0 
     70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
     100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
+/* src/pages/Dashboard.css */
+
+/* 🚀 FORCE FULL SCREEN OVERLAY */
+.custom-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85); /* Darker background */
+  backdrop-filter: blur(5px);
+  z-index: 99999 !important; /* Higher than Sidebar (usually 100) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Make the box larger for Coding/Typing */
+.custom-modal-box {
+  background: white;
+  padding: 30px;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 800px; /* Wide mode */
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  position: relative;
+  animation: popIn 0.3s ease-out;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 

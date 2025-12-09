@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom'; // ✅ Required for Portal
-import { signOut } from 'firebase/auth';
+import ReactDOM from 'react-dom'; 
+import { signOut, onAuthStateChanged } from 'firebase/auth'; // ✅ Added onAuthStateChanged
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc, orderBy, limit } from 'firebase/firestore';
@@ -192,7 +192,6 @@ const NoticesView = ({ notices }) => {
 
 // --- COMPONENT: Smart Schedule Card (Presentational) ---
 const SmartScheduleCard = ({ user, currentSlot, loading }) => {
-    // Determine status from passed prop
     const isFree = currentSlot?.type === 'Free' || currentSlot?.type === 'Break' || currentSlot?.type === 'Holiday';
 
     if (loading) return <div className="card" style={{padding:'20px', textAlign:'center'}}>Loading Schedule...</div>;
@@ -365,11 +364,24 @@ export default function StudentDashboard() {
   const scannerRef = useRef(null); 
   const navigate = useNavigate();
 
+  // ✅ FIX 1: Robust User Loading with onAuthStateChanged
   useEffect(() => {
-    if (!auth.currentUser) return;
-    const unsub = onSnapshot(doc(db, "users", auth.currentUser.uid), (doc) => setUser(doc.data()));
-    return () => unsub();
-  }, []);
+    const authUnsub = onAuthStateChanged(auth, (authUser) => {
+        if (authUser) {
+            const unsub = onSnapshot(doc(db, "users", authUser.uid), (doc) => {
+                if (doc.exists()) {
+                    setUser(doc.data());
+                } else {
+                    console.error("User doc missing");
+                }
+            });
+            return () => unsub();
+        } else {
+            navigate('/');
+        }
+    });
+    return () => authUnsub();
+  }, [navigate]);
 
   // ✅ GLOBAL SCHEDULE LOGIC (Runs every minute)
   useEffect(() => {
@@ -384,7 +396,7 @@ export default function StudentDashboard() {
           if (today === 'Sunday') { 
               setCurrentSlot({ type: 'Holiday', subject: 'Weekend! Relax.' }); 
               if (!isFreePeriod) {
-                  // setIsFreePeriod(true); // Optional: if you want weekend to act as free period
+                  // setIsFreePeriod(true); // Optional
               }
               return; 
           }
@@ -400,7 +412,7 @@ export default function StudentDashboard() {
                       return now >= start && now < end;
                   });
 
-                  const slotData = activeSlot || { type: 'Free', subject: 'No active class.' };
+                  const slotData = activeSlot || { type: 'Free', subject: 'No active class.', startTime: '00:00', endTime: '00:00' };
                   setCurrentSlot(slotData);
                   
                   // ✅ DETECT FREE PERIOD TYPE
@@ -413,9 +425,13 @@ export default function StudentDashboard() {
                       setIsFreePeriod(false);
                   }
               } else { 
-                  setCurrentSlot(null); 
+                  // ✅ FIX 2: Default Slot when NO TIMETABLE exists (Prevent Infinite Load)
+                  setCurrentSlot({ type: 'Free', subject: 'No Schedule Found', startTime: '00:00', endTime: '00:00' });
               }
-          } catch (error) { console.error(error); }
+          } catch (error) { 
+              console.error(error); 
+              setCurrentSlot({ type: 'Free', subject: 'Error Loading', startTime: '00:00', endTime: '00:00' });
+          }
       };
       
       fetchSchedule();

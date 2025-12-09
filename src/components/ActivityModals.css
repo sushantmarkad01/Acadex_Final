@@ -1,0 +1,195 @@
+/* src/components/ActivityModals.css */
+
+/* --- SHARED MODAL OVERLAY (Fixes Sidebar Issue) --- */
+.activity-modal-overlay {
+  position: fixed;
+  top: 0; 
+  left: 0; 
+  width: 100vw; /* Full Viewport Width */
+  height: 100vh; /* Full Viewport Height */
+  background: rgba(0, 0, 0, 0.85); /* Darker background for focus */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 100000 !important; /* 🚀 FORCE ON TOP OF SIDEBAR */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-modal-card {
+  background: #1e293b; /* Dark Slate Theme */
+  width: 95%;
+  max-width: 900px; /* Wider for Coding/Typing */
+  height: 85vh;     /* Taller for Full Screen feel */
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  border: 1px solid #334155;
+  overflow: hidden;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  animation: modalPop 0.3s ease-out;
+}
+
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* --- HEADER --- */
+.modal-header {
+  padding: 20px 25px;
+  background: #0f172a;
+  border-bottom: 1px solid #334155;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  background: linear-gradient(90deg, #60a5fa, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+}
+
+.close-btn {
+  background: #334155;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: background 0.2s;
+}
+
+.close-btn:hover { background: #ef4444; }
+
+/* --- CODING CHALLENGE STYLES --- */
+.code-problem-box {
+  padding: 20px 25px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  color: #cbd5e1;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.code-editor-area {
+  flex: 1;
+  width: 100%;
+  background: #0f172a; /* Deep Black */
+  color: #a5f3fc;       /* Cyan Text */
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 15px;
+  border: none;
+  padding: 25px;
+  outline: none;
+  resize: none;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-y: auto;
+}
+
+/* --- TYPING TEST STYLES --- */
+.typing-target-box {
+  background: #334155;
+  padding: 30px;
+  border-radius: 12px;
+  margin: 20px 25px;
+  font-size: 22px; /* Larger text for reading */
+  line-height: 1.6;
+  color: #e2e8f0;
+  user-select: none; /* Prevent Copying */
+  font-family: 'Georgia', serif;
+  border-left: 4px solid #3b82f6;
+}
+
+.typing-input-area {
+  flex: 1;
+  margin: 0 25px 20px 25px;
+  padding: 20px;
+  background: #0f172a;
+  border: 2px solid #475569;
+  border-radius: 12px;
+  color: white;
+  font-size: 18px;
+  outline: none;
+  font-family: monospace;
+  resize: none;
+}
+
+.typing-input-area:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.typing-input-area.correct {
+    border-color: #10b981;
+}
+
+.timer-badge {
+  background: #ef4444;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 16px;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+
+/* --- FEEDBACK BOX --- */
+.feedback-box {
+  margin: 0 25px 20px 25px;
+  padding: 15px;
+  border-radius: 12px;
+  font-size: 15px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.feedback-success {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid #059669;
+  color: #34d399;
+}
+
+.feedback-hint {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid #d97706;
+  color: #fbbf24;
+}
+
+/* --- FOOTER --- */
+.modal-footer {
+  padding: 20px 25px;
+  border-top: 1px solid #334155;
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  background: #1e293b;
+}
+
+.btn-submit {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.btn-submit:hover { background: #1d4ed8; transform: translateY(-2px); }
+.btn-submit:disabled { background: #475569; cursor: not-allowed; box-shadow: none; transform: none; }
