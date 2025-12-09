@@ -37,10 +37,10 @@ export default function AddTasks() {
         return () => unsub();
     }, []);
 
+    // ✅ UPDATED FUNCTION: Updates local state immediately after creation
     const handleCreate = async (e) => {
         e.preventDefault();
         
-        // --- FIX 1: Add a check for essential data before proceeding ---
         if (!teacher || !auth.currentUser) {
             toast.error("Profile data not fully loaded. Please wait a moment and try again.");
             return;
@@ -49,7 +49,6 @@ export default function AddTasks() {
         setLoading(true);
         const toastId = toast.loading("Assigning Task...");
         try {
-            // Basic validation check
             if (!form.dueDate) {
                  toast.error("Please set a due date.");
                  setLoading(false);
@@ -61,29 +60,39 @@ export default function AddTasks() {
                 return;
             }
 
+            // Prepare task data
+            const taskData = {
+                ...form,
+                teacherId: auth.currentUser.uid,
+                teacherName: teacher.firstName || 'Staff Teacher',
+                department: teacher.department || 'General', 
+            };
+
             const response = await fetch(`${BACKEND_URL}/createAssignment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...form,
-                    teacherId: auth.currentUser.uid,
-                    // Safely access properties, using fallbacks
-                    teacherName: teacher.firstName || 'Staff Teacher',
-                    department: teacher.department || 'General', 
-                })
+                body: JSON.stringify(taskData)
             });
             
-            // --- FIX 2: Check for non-200 status and read error message from backend ---
             if (!response.ok) {
-                // Attempt to parse the error message from the response body
                 const errorData = await response.json();
                 throw new Error(errorData.error || `Backend responded with status: ${response.status}`);
             }
 
             toast.success("Task Assigned!", { id: toastId });
+
+            // ✅ FIX: Manually update the tasks list immediately
+            // This ensures it shows up in "Evaluate" without waiting for the DB
+            const newTask = { 
+                id: Date.now().toString(), // Temp ID until refresh
+                ...taskData,
+                createdAt: new Date() 
+            };
+            
+            setTasks(prev => [newTask, ...prev]);
+
             setForm({ title: '', description: '', targetYear: 'All', dueDate: '' });
         } catch (err) { 
-            // Display the detailed error message from the backend or the custom message
             console.error("Task creation failed:", err);
             toast.error(`Failed: ${err.message}`, { id: toastId }); 
         }

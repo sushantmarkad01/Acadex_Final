@@ -356,16 +356,20 @@ export default function TeacherDashboard() {
     return () => unsub();
   }, []);
 
-  useEffect(() => {
+ useEffect(() => {
     let unsubscribe;
-    if (activeSession) {
-        const q = query(collection(db, 'attendance'), where('sessionId', '==', activeSession.sessionId));
+    if (activeSession && teacherInfo?.instituteId) { // Ensure teacherInfo is available
+        const q = query(
+            collection(db, 'attendance'), 
+            where('sessionId', '==', activeSession.sessionId),
+            where('instituteId', '==', teacherInfo.instituteId) // <--- ADD THIS LINE
+        );
         unsubscribe = onSnapshot(q, (snap) => setAttendanceList(snap.docs.map(d => ({id: d.id, ...d.data()}))));
     } else {
         setAttendanceList([]);
     }
     return () => { if(unsubscribe) unsubscribe(); };
-  }, [activeSession]);
+}, [activeSession, teacherInfo]);
 
   // 2. History Data Fetching
   useEffect(() => {

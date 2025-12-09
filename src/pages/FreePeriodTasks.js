@@ -14,36 +14,21 @@ const BACKEND_URL = "https://acadex-backend-n2wh.onrender.com";
 
 // --- 1. ORIGINAL CONSTANTS (Preserved) ---
 const ALL_ACTIVITIES = [
-    // 💻 ENGINEERING & TECH
-    { id: 1, title: 'Daily Coding Challenge', type: 'Coding', xp: 50, color: '#6366f1', icon: 'fa-laptop-code', tags: ['coding', 'computer science', 'tech'] },
-    { id: 2, title: 'Debug a React Component', type: 'Coding', xp: 45, color: '#0ea5e9', icon: 'fa-bug', tags: ['frontend', 'react', 'tech'] },
-    { id: 3, title: 'SQL Query Optimization', type: 'Coding', xp: 35, color: '#3b82f6', icon: 'fa-database', tags: ['database', 'backend', 'tech'] },
-    { id: 4, title: 'Circuit Design Logic', type: 'Puzzle', xp: 40, color: '#eab308', icon: 'fa-microchip', tags: ['electronics', 'hardware', 'engineering'] },
-    { id: 5, title: 'Thermodynamics Quiz', type: 'Quiz', xp: 30, color: '#ef4444', icon: 'fa-fire', tags: ['mechanical', 'physics', 'engineering'] },
-
-    // 🏥 MEDICAL & SCIENCE
-    { id: 6, title: 'Anatomy Labeling', type: 'Quiz', xp: 30, color: '#ef4444', icon: 'fa-heartbeat', tags: ['medical', 'biology', 'health'] },
-    { id: 7, title: 'Medical Case Study', type: 'Reading', xp: 40, color: '#10b981', icon: 'fa-user-md', tags: ['medical', 'doctor', 'nursing'] },
-    { id: 8, title: 'Periodic Table Speed Run', type: 'Game', xp: 25, color: '#8b5cf6', icon: 'fa-flask', tags: ['chemistry', 'science'] },
-    { id: 9, title: 'Plant Identification', type: 'Puzzle', xp: 20, color: '#15803d', icon: 'fa-leaf', tags: ['biology', 'botany', 'agriculture'] },
-
-    // 💰 COMMERCE & BUSINESS
-    { id: 10, title: 'Stock Market Analysis', type: 'Analysis', xp: 35, color: '#10b981', icon: 'fa-chart-line', tags: ['finance', 'business', 'commerce'] },
-    { id: 11, title: 'Create a Budget Plan', type: 'Finance', xp: 30, color: '#059669', icon: 'fa-wallet', tags: ['finance', 'accounting', 'commerce'] },
-    { id: 12, title: 'Marketing Case Study', type: 'Reading', xp: 30, color: '#f97316', icon: 'fa-bullhorn', tags: ['marketing', 'business', 'mba'] },
-    { id: 13, title: 'SWOT Analysis', type: 'Writing', xp: 25, color: '#3b82f6', icon: 'fa-project-diagram', tags: ['business', 'management'] },
-
-    // 🚀 UNIVERSAL / PRODUCTIVITY
+    { id: 1, title: 'Daily Coding Challenge', type: 'Coding', xp: 50, color: '#6366f1', icon: 'fa-laptop-code', tags: ['coding', 'tech'] },
+    { id: 2, title: 'Debug a React Component', type: 'Coding', xp: 45, color: '#0ea5e9', icon: 'fa-bug', tags: ['frontend', 'react'] },
+    { id: 3, title: 'SQL Query Optimization', type: 'Coding', xp: 35, color: '#3b82f6', icon: 'fa-database', tags: ['database'] },
+    { id: 4, title: 'Circuit Design Logic', type: 'Puzzle', xp: 40, color: '#eab308', icon: 'fa-microchip', tags: ['electronics'] },
+    { id: 5, title: 'Thermodynamics Quiz', type: 'Quiz', xp: 30, color: '#ef4444', icon: 'fa-fire', tags: ['mechanical'] },
+    { id: 6, title: 'Anatomy Labeling', type: 'Quiz', xp: 30, color: '#ef4444', icon: 'fa-heartbeat', tags: ['medical'] },
+    { id: 7, title: 'Medical Case Study', type: 'Reading', xp: 40, color: '#10b981', icon: 'fa-user-md', tags: ['medical'] },
+    { id: 8, title: 'Periodic Table Speed Run', type: 'Game', xp: 25, color: '#8b5cf6', icon: 'fa-flask', tags: ['chemistry'] },
     { id: 19, title: 'Update Resume', type: 'Career', xp: 50, color: '#2563eb', icon: 'fa-file-alt', tags: ['career', 'job', 'universal'] },
     { id: 20, title: 'Speed Typing Test', type: 'Typing', xp: 20, color: '#f59e0b', icon: 'fa-keyboard', tags: ['productivity', 'universal'] },
-    { id: 21, title: 'Mental Math Drill', type: 'Drill', xp: 15, color: '#06b6d4', icon: 'fa-calculator', tags: ['math', 'universal'] },
-    { id: 24, title: 'Sudoku Challenge', type: 'Brain', xp: 25, color: '#7c3aed', icon: 'fa-puzzle-piece', tags: ['logic', 'universal'] }
 ];
 
 export default function FreePeriodTasks({ user, isFreePeriod }) {
     const [activeTab, setActiveTab] = useState('assignments'); 
     
-    // Auto-switch to Quick Picks if Free Period Detected
     useEffect(() => { 
         if (isFreePeriod) setActiveTab('gamified'); 
     }, [isFreePeriod]);
@@ -55,21 +40,17 @@ export default function FreePeriodTasks({ user, isFreePeriod }) {
     
     // AI & Interactive States
     const [loading, setLoading] = useState(false);
-    
-    // ✅ NEW: Store the generated task data
     const [activeAiTask, setActiveAiTask] = useState(null); 
     
     // Verification & Modals
     const [submitModal, setSubmitModal] = useState({ open: false, taskId: null });
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
-    
     const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
 
     // Stats State
     const [credits, setCredits] = useState(user?.xp || 0);
     
-    // Sync local credits
     useEffect(() => {
         if (user?.xp !== undefined) setCredits(user.xp);
     }, [user?.xp]);
@@ -95,11 +76,9 @@ export default function FreePeriodTasks({ user, isFreePeriod }) {
 
     useEffect(() => {
         if (!auth.currentUser) return;
-        // Listen to submissions collection for the current user's submissions
         const q = query(collection(db, 'submissions'), where('studentId', '==', auth.currentUser.uid));
         const unsub = onSnapshot(q, (snap) => {
             const subMap = {};
-            // Map the submissions by assignmentId for easy lookup
             snap.docs.forEach(doc => { 
                 const data = doc.data(); 
                 subMap[data.assignmentId] = data; 
@@ -109,40 +88,23 @@ export default function FreePeriodTasks({ user, isFreePeriod }) {
         return () => unsub();
     }, []);
 
-    // --- 2. RECOMMENDATION LOGIC (Preserved) ---
+    // --- 2. RECOMMENDATION LOGIC ---
     useEffect(() => {
         if (!user) return;
-        
-        const interestString = `${user.department || ''} ${user.domain || ''} ${user.subDomain || ''} ${user.specificSkills || ''}`.toLowerCase();
-        
+        const interestString = `${user.department || ''} ${user.domain || ''}`.toLowerCase();
         const strictMatches = ALL_ACTIVITIES.filter(task => {
             if (task.tags.includes('universal')) return true;
             return task.tags.some(tag => interestString.includes(tag));
         });
-
-        const relevant = strictMatches.filter(t => !t.tags.includes('universal'));
-        const universal = strictMatches.filter(t => t.tags.includes('universal'));
-        
-        let finalDisplay = [...relevant, ...universal];
-
-        if (finalDisplay.length < 6) {
-            const moreUniversal = ALL_ACTIVITIES.filter(t => t.tags.includes('universal') && !finalDisplay.includes(t));
-            finalDisplay = [...finalDisplay, ...moreUniversal];
-        }
-
-        setRecommendedTasks(finalDisplay.slice(0, 8));
+        setRecommendedTasks(strictMatches.slice(0, 8));
     }, [user]);
 
-    // --- 3. INTERACTIVE TASK HANDLERS (UPDATED) ---
-    
-    // ✅ Logic: When user clicks a card, we ask AI to generate the content for that specific type
+    // --- 3. TASK HANDLERS ---
     const startTask = async (task) => {
-        // Special Cases
         if (task.title === 'Update Resume') { setIsResumeModalOpen(true); return; }
         
         setLoading(true);
         try {
-            // Ask Backend to generate content for this specific task
             const res = await fetch(`${BACKEND_URL}/generatePersonalizedTasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -152,24 +114,12 @@ export default function FreePeriodTasks({ user, isFreePeriod }) {
                         subDomain: user.subDomain || "Technology",
                         specificSkills: user.specificSkills || "General"
                     },
-                    // Force generate 1 task of this type
                     forceType: task.type 
                 })
             });
 
             const data = await res.json();
-            
-            // Find the task that matches the type we clicked
-            let generatedTask = data.tasks.find(t => t.type === task.type);
-            
-            // If AI didn't give exact match, use fallback
-            if (!generatedTask) {
-                if (task.type === 'Coding') generatedTask = { type: 'Coding', title: task.title, content: { problemStatement: "Write a function to reverse a string.", starterCode: "function reverse(str) {}" }, xp: task.xp };
-                else if (task.type === 'Typing') generatedTask = { type: 'Typing', title: task.title, content: { targetText: "Technology is the application of scientific knowledge for practical purposes." }, xp: task.xp };
-                else generatedTask = { type: 'Coding', title: task.title, content: { problemStatement: "Solve this logic puzzle.", starterCode: "// Answer here" }, xp: task.xp };
-            }
-
-            // Open the Modal
+            let generatedTask = data.tasks.find(t => t.type === task.type) || { type: 'Coding', title: task.title, content: { problemStatement: "Sample Problem", starterCode: "// Code here" }, xp: task.xp };
             setActiveAiTask(generatedTask);
 
         } catch (err) {
@@ -189,51 +139,39 @@ export default function FreePeriodTasks({ user, isFreePeriod }) {
         }
     };
 
-   const handleSubmitFile = async () => {
+    const handleSubmitFile = async () => {
         if (!file || !submitModal.taskId) return toast.error("Please select a file.");
-
-        // Check File Size (Max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            return toast.error("File is too large. Max 5MB.");
-        }
+        if (file.size > 5 * 1024 * 1024) return toast.error("File is too large. Max 5MB.");
 
         setUploading(true);
         const toastId = toast.loading("Uploading & Submitting...");
 
         try {
             const formData = new FormData();
-            
-            // 1. MUST match backend 'upload.single("document")'
             formData.append('document', file); 
-            
-            // 2. Append required metadata for Backend Route 22
             formData.append('assignmentId', submitModal.taskId);
             formData.append('studentId', user.uid);
             formData.append('studentName', `${user.firstName} ${user.lastName}`);
-            formData.append('rollNo', user.rollNo || 'N/A'); // Fallback if rollNo is missing
+            formData.append('rollNo', user.rollNo || 'N/A');
 
-            // 3. Send to the CORRECT backend route
-            // This route handles both file upload (e.g., to Firebase Storage) and saving metadata to Firestore 'submissions'
             const res = await fetch(`${BACKEND_URL}/submitAssignment`, {
                 method: 'POST',
                 body: formData
             });
 
-            const data = await res.json();
+            if (!res.ok) throw new Error("Submission failed");
 
-            if (!res.ok) {
-                // Handle "Already submitted" or other errors
-                throw new Error(data.error || "Submission failed");
-            }
-
-            // 4. Success! (Backend handles the DB save, so we just update UI)
-            toast.success("Assignment Submitted Successfully!", { id: toastId });
+            toast.success("Assignment Submitted!", { id: toastId });
             
-            // Update local state to show "Submitted" immediately without refresh
+            const tempFileUrl = URL.createObjectURL(file);
             setSubmissions(prev => ({
                 ...prev,
-                // The status must be 'Pending' for teacher review
-                [submitModal.taskId]: { status: 'Pending', submittedAt: new Date() } 
+                [submitModal.taskId]: { 
+                    status: 'Pending', 
+                    submittedAt: new Date(),
+                    documentUrl: tempFileUrl, 
+                    fileName: file.name
+                } 
             }));
 
             setSubmitModal({ open: false, taskId: null });
@@ -246,6 +184,7 @@ export default function FreePeriodTasks({ user, isFreePeriod }) {
             setUploading(false);
         }
     };
+
     return (
         <div className="content-section">
             <div className="tasks-header">
@@ -269,65 +208,83 @@ export default function FreePeriodTasks({ user, isFreePeriod }) {
                 </button>
             </div>
 
-            {/* TAB 1: ASSIGNMENTS */}
+            {/* TAB 1: ASSIGNMENTS (UPDATED UI) */}
             {activeTab === 'assignments' && (
                 <div className="tasks-grid">
-                    {assignments.length > 0 ? assignments.map((task, index) => {
-                         const sub = submissions[task.id]; 
-                         const isSubmitted = !!sub; // Check if submission object exists
-                         const isGraded = sub?.status === 'Graded';
-                         
-                         // Determine the display status for the pill
-                         let statusText = 'Pending';
-                         let statusClass = 'pending'; // Default style
-                         
-                         if (isGraded) {
-                            statusText = `${sub.marks}/100`;
-                            statusClass = 'graded';
-                         } else if (isSubmitted) {
-                            statusText = 'Submitted';
-                            statusClass = 'submitted';
-                         }
+                    <AnimatePresence>
+                        {assignments.length > 0 ? assignments.map((task, index) => {
+                            const sub = submissions[task.id]; 
+                            const isSubmitted = !!sub; 
+                            const isGraded = sub?.status === 'Graded';
+                            
+                            let statusText = 'Pending';
+                            let statusClass = 'status-pending';
+                            
+                            if (isGraded) {
+                                statusText = `${sub.marks}/100`;
+                                statusClass = 'status-graded';
+                            } else if (isSubmitted) {
+                                statusText = 'Submitted';
+                                statusClass = 'status-submitted';
+                            }
 
-                         return (
-                            <motion.div 
-                                key={task.id} 
-                                className={`task-card modern-card ${isSubmitted ? 'submitted-card' : ''}`} 
-                                initial={{ opacity: 0, y: 10 }} 
-                                animate={{ opacity: 1, y: 0 }} 
-                                transition={{ delay: index * 0.05 }}
-                                // Highlight submitted card with a subtle shadow/border change
-                                style={{ border: isSubmitted ? '2px solid #10b981' : '1px solid #ddd' }}
-                            >
-                                <div className="card-top">
-                                    <div className="icon-square" style={{ background: '#e0f2fe', color: '#0284c7' }}><i className="fas fa-book-open"></i></div>
-                                    <span className={`status-pill ${statusClass}`}>
-                                        {statusText}
-                                    </span>
-                                </div>
-                                <div className="card-body">
-                                    <h3>{task.title}</h3>
-                                    <p>{task.description}</p>
-                                    <small><i className="far fa-clock"></i> Due: {new Date(task.dueDate).toLocaleDateString()}</small>
-                                </div>
-                                
-                                {/* Action Button Logic */}
-                                {isGraded && <div className="btn-modern-secondary">View Grade & Feedback</div>}
-                                {!isSubmitted && <button className="btn-modern-primary" onClick={() => setSubmitModal({ open: true, taskId: task.id })}>Upload PDF</button>}
-                                {isSubmitted && !isGraded && (
-                                    <div className="submitted-msg">
-                                        <i className="fas fa-check-circle"></i> Submission recorded. Waiting for teacher evaluation.
+                            return (
+                                <motion.div 
+                                    key={task.id} 
+                                    className="task-card-modern"
+                                    initial={{ opacity: 0, y: 20 }} 
+                                    animate={{ opacity: 1, y: 0 }} 
+                                    transition={{ delay: index * 0.1 }}
+                                >
+                                    <div className="card-header-row">
+                                        <div className="task-icon-circle">
+                                            <i className="fas fa-book-open"></i>
+                                        </div>
+                                        <span className={`modern-status-pill ${statusClass}`}>
+                                            {statusText}
+                                        </span>
                                     </div>
-                                )}
-                            </motion.div>
-                        );
-                    }) : (
-                        <div className="empty-state-glass"><h3>No Assignments</h3></div>
-                    )}
+
+                                    <div>
+                                        <h3 className="modern-title">{task.title}</h3>
+                                        <div className="modern-meta">
+                                            <i className="far fa-calendar-alt"></i> 
+                                            Due: {new Date(task.dueDate).toLocaleDateString()}
+                                        </div>
+                                        <p className="modern-desc">{task.description}</p>
+                                    </div>
+                                    
+                                    <div className="action-area">
+                                        {isGraded ? (
+                                             <div className="submitted-area">
+                                                <i className="fas fa-star"></i> Graded
+                                                <div style={{marginTop:'5px', color:'#1e293b'}}>Feedback: "{sub.feedback}"</div>
+                                             </div>
+                                        ) : isSubmitted ? (
+                                            <div className="submitted-area">
+                                                <i className="fas fa-check-circle"></i> Submission Sent
+                                                {sub.documentUrl && (
+                                                    <a href={sub.documentUrl} target="_blank" rel="noreferrer" className="submitted-link">
+                                                        View Document
+                                                    </a>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <button className="btn-upload-glow" onClick={() => setSubmitModal({ open: true, taskId: task.id })}>
+                                                <i className="fas fa-cloud-upload-alt"></i> Upload PDF
+                                            </button>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            );
+                        }) : (
+                            <div className="empty-state-glass"><h3>No Assignments</h3></div>
+                        )}
+                    </AnimatePresence>
                 </div>
             )}
 
-            {/* TAB 2: CURRICULUM & QUICK PICKS */}
+            {/* TAB 2: QUICK PICKS (Preserved) */}
             {activeTab === 'gamified' && (
                 <div>
                     {isFreePeriod && (
@@ -339,34 +296,30 @@ export default function FreePeriodTasks({ user, isFreePeriod }) {
                             </div>
                         </motion.div>
                     )}
-
                     <h3 className="section-heading">Quick Picks</h3>
                     <div className="tasks-grid">
                         {recommendedTasks.map((task, index) => (
                             <motion.div 
                                 key={task.id} 
-                                className="task-card modern-card" 
+                                className="task-card-modern"
                                 whileHover={{ y: -5 }} 
                                 initial={{ opacity: 0 }} 
                                 animate={{ opacity: 1 }} 
-                                transition={{ delay: index * 0.05 }}
                             >
-                                <div className="card-top">
-                                    <div className="icon-square" style={{ background: `${task.color}15`, color: task.color }}>
+                                <div className="card-header-row">
+                                    <div className="task-icon-circle" style={{background: `${task.color}15`, color: task.color}}>
                                         <i className={`fas ${task.icon}`}></i>
                                     </div>
-                                    <span className="xp-pill">+{task.xp} XP</span>
+                                    <span className="xp-badge">+{task.xp} XP</span>
                                 </div>
-                                <div className="card-body">
-                                    <h3>{task.title}</h3>
+                                <div>
+                                    <h3 className="modern-title">{task.title}</h3>
                                     <div className="tags">
                                         {task.tags.slice(0,2).map(t => <span key={t} className="tiny-tag">#{t}</span>)}
                                     </div>
-                                    <p className="time-est"><i className="far fa-clock"></i> 5 min</p>
                                 </div>
-                                {/* ✅ BUTTON TRIGGERS AI MODAL */}
-                                <button className="btn-modern-outline" onClick={() => startTask(task)} disabled={loading}>
-                                    {loading ? 'Starting...' : 'Start'}
+                                <button className="btn-modern-outline" style={{marginTop:'auto'}} onClick={() => startTask(task)} disabled={loading}>
+                                    {loading ? '...' : 'Start Activity'}
                                 </button>
                             </motion.div>
                         ))}
@@ -375,18 +328,33 @@ export default function FreePeriodTasks({ user, isFreePeriod }) {
             )}
 
             {/* --- MODALS --- */}
-            
-            {/* File Upload Modal */}
             <AnimatePresence>
                 {submitModal.open && (
                     <div className="custom-modal-overlay">
-                        <motion.div className="custom-modal-box glass-modal" initial={{ scale: 0.9 }} animate={{ scale: 1 }}>
-                            <h3>Submit Assignment</h3>
-                            <input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setFile(e.target.files[0])} style={{marginBottom:'20px', marginTop:'10px'}} />
-                            <div className="modal-actions">
+                        <motion.div className="custom-modal-box glass-modal" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+                            <div style={{textAlign:'center'}}>
+                                <div className="task-icon-circle" style={{margin:'0 auto 20px auto', background:'#eff6ff', color:'#2563eb'}}>
+                                    <i className="fas fa-file-upload"></i>
+                                </div>
+                                <h3 style={{fontSize:'22px', margin:'0 0 10px 0'}}>Submit Assignment</h3>
+                                <p style={{color:'#64748b', marginBottom:'20px'}}>Upload your work for evaluation.</p>
+                            </div>
+                            
+                            <div className="file-drop-zone" style={{position:'relative'}}>
+                                <input 
+                                    type="file" 
+                                    accept=".pdf,.doc,.docx" 
+                                    onChange={(e) => setFile(e.target.files[0])} 
+                                    style={{opacity:0, position:'absolute', inset:0, cursor:'pointer'}} 
+                                />
+                                <i className="fas fa-cloud-upload-alt" style={{fontSize:'30px', marginBottom:'10px'}}></i>
+                                <p>{file ? file.name : "Click to Browse or Drag File"}</p>
+                            </div>
+
+                            <div className="modal-actions" style={{marginTop:'25px'}}>
                                 <button className="btn-modern-ghost" onClick={() => setSubmitModal({ open: false, taskId: null })}>Cancel</button>
-                                <button className="btn-modern-primary" onClick={handleSubmitFile} disabled={uploading}>
-                                    {uploading ? 'Uploading...' : 'Submit'}
+                                <button className="btn-upload-glow" style={{width:'auto', padding:'10px 30px'}} onClick={handleSubmitFile} disabled={uploading}>
+                                    {uploading ? 'Uploading...' : 'Submit Now'}
                                 </button>
                             </div>
                         </motion.div>
@@ -395,25 +363,8 @@ export default function FreePeriodTasks({ user, isFreePeriod }) {
             </AnimatePresence>
 
             <ResumeBuilderModal isOpen={isResumeModalOpen} onClose={() => setIsResumeModalOpen(false)} user={user} />
-            
-            {/* ✅ NEW AI MODALS */}
-            {activeAiTask?.type === 'Coding' && (
-                <CodingChallengeModal 
-                    isOpen={true} 
-                    task={activeAiTask} 
-                    onClose={() => setActiveAiTask(null)}
-                    onComplete={handleAiTaskComplete}
-                />
-            )}
-
-            {activeAiTask?.type === 'Typing' && (
-                <TypingTestModal 
-                    isOpen={true} 
-                    task={activeAiTask} 
-                    onClose={() => setActiveAiTask(null)}
-                    onComplete={handleAiTaskComplete}
-                />
-            )}
+            {activeAiTask?.type === 'Coding' && <CodingChallengeModal isOpen={true} task={activeAiTask} onClose={() => setActiveAiTask(null)} onComplete={handleAiTaskComplete} />}
+            {activeAiTask?.type === 'Typing' && <TypingTestModal isOpen={true} task={activeAiTask} onClose={() => setActiveAiTask(null)} onComplete={handleAiTaskComplete} />}
         </div>
     );
 }

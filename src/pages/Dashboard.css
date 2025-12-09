@@ -2124,24 +2124,185 @@ textarea.modern-input:focus { border-color: var(--tech-blue); box-shadow: 0 0 0 
   from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: scale(1); }
 }
+/* =========================================
+   ✨ NEW: MODERN ASSIGNMENT CARDS & FIXES
+   ========================================= */
+
+/* --- 1. Z-INDEX FIX (Sidebar staying back) --- */
+/* We force the modal overlay to be the highest layer on the screen */
 .custom-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6); /* Creates the dark backdrop */
-    
-    /* 🔥 THE CRITICAL FIX 🔥: Set Z-index extremely high */
-    z-index: 1000; 
-    
-    /* Ensure the backdrop fills the whole screen */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.custom-modal-box {
-    /* Optional: Ensure the modal box itself is also high */
-    z-index: 1001; 
+    z-index: 2147483647 !important; /* Max CSS Integer */
+    background: rgba(15, 23, 42, 0.6); /* Darker, premium backdrop */
+    backdrop-filter: blur(8px); /* Strong blur for focus */
 }
 
+.custom-modal-box {
+    z-index: 2147483647 !important; 
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- 2. MODERN CARD STYLES --- */
+.tasks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); /* Wider cards */
+    gap: 25px;
+    padding-bottom: 40px;
+}
+
+.task-card-modern {
+    background: white;
+    border-radius: 24px; /* Super rounded modern look */
+    padding: 24px;
+    position: relative;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy spring effect */
+}
+
+.task-card-modern:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px -10px rgba(37, 99, 235, 0.15);
+    border-color: #bfdbfe;
+}
+
+/* Gradient Top Border for visual flair */
+.task-card-modern::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.task-card-modern:hover::before {
+    opacity: 1;
+}
+
+/* --- 3. STATUS PILLS & TYPOGRAPHY --- */
+.card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.task-icon-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+    background: #eff6ff;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    transition: transform 0.3s;
+}
+
+.task-card-modern:hover .task-icon-circle {
+    transform: rotate(10deg);
+    background: #2563eb;
+    color: white;
+}
+
+.modern-status-pill {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.status-pending { background: #fff1f2; color: #be123c; border: 1px solid #fda4af; }
+.status-submitted { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+.status-graded { background: #eff6ff; color: #1e40af; border: 1px solid #93c5fd; }
+
+.modern-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+}
+
+.modern-desc {
+    font-size: 14px;
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.modern-meta {
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 10px;
+    width: fit-content;
+    margin-bottom: 20px;
+}
+
+/* --- 4. BUTTONS --- */
+.action-area {
+    margin-top: auto;
+}
+
+.btn-upload-glow {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-upload-glow:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.5);
+}
+
+.submitted-area {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    font-size: 13px;
+    color: #166534;
+    font-weight: 600;
+}
+
+.submitted-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-size: 12px;
+    display: block;
+    margin-top: 4px;
+    font-weight: 500;
+}
+.submitted-link:hover { text-decoration: underline; }
